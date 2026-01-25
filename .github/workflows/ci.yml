@@ -30,6 +30,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          run: npm i --legacy-peer-deps
           npm run build
 
       - name: Copy dist to Spring static
