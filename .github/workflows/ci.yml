@@ -29,7 +29,7 @@ jobs:
       - name: Frontend build (Vite)
         working-directory: frontend
         run: |
-          npm ci
+          #npm ci
           run: npm i --legacy-peer-deps   # 우선 이대로 하고 나중에 수정
           npm run build
 
