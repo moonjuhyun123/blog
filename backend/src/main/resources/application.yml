@@ -96,7 +96,7 @@ spring:
     database-platform: org.hibernate.dialect.MariaDBDialect
 
 server:
-  port: 8081
+  port: 8080
 
 security:
   jwt:
