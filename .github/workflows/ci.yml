@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push:
+    branches: ["main", "master"]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}/game:latest
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend build (Vite)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy dist to Spring static
+        run: |
+          rm -rf backend/src/main/resources/static/*
+          mkdir -p backend/src/main/resources/static
+          cp -r frontend/dist/* backend/src/main/resources/static/
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+          cache: maven
+
+      - name: Maven package (backend)
+        working-directory: backend
+        run: |
+          mvn -B -DskipTests clean package
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Docker build
+        run: docker build -t "${{ env.IMAGE }}" .
+
+      - name: Docker push
+        run: docker push "${{ env.IMAGE }}"
