@@ -7,6 +7,7 @@ public record PostSummary(
         String title,
         Category category,
         int likeCount,
+        boolean isPinned,
         boolean isPrivate,
         LocalDateTime createdAt
 ) {

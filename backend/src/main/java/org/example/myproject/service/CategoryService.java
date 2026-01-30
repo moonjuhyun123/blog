@@ -24,7 +24,10 @@ public class CategoryService {
     private final CategoryRepository repo;
 
     public List<CategoryDto> list() {
-        return repo.findAll().stream().map(DtoMapper::toCategoryDto).toList();
+        return repo.findAllByOrderBySortOrderAscCreatedAtAsc()
+                .stream()
+                .map(DtoMapper::toCategoryDto)
+                .toList();
     }
 
     @Transactional
@@ -32,7 +35,13 @@ public class CategoryService {
         requireAdmin(admin);
         String slug = toSlug(req.name());
         if (repo.existsBySlug(slug)) throw new ApiException(HttpStatus.CONFLICT, "slug exists");
-        Category c = Category.builder().name(req.name()).slug(slug).build();
+        Integer maxOrder = repo.findMaxSortOrder();
+        int nextOrder = (maxOrder == null ? 0 : maxOrder) + 1;
+        Category c = Category.builder()
+                .name(req.name())
+                .slug(slug)
+                .sortOrder(nextOrder)
+                .build();
         return new IdOnly(repo.save(c).getId());
     }
 
@@ -54,6 +63,25 @@ public class CategoryService {
         requireAdmin(admin);
         if (!repo.existsById(id)) throw new ApiException(HttpStatus.NOT_FOUND, "Not Found");
         repo.deleteById(id);
+    }
+
+    @Transactional
+    public void reorder(List<Long> orderedIds, User admin) {
+        requireAdmin(admin);
+        if (orderedIds == null || orderedIds.isEmpty()) return;
+        List<Category> all = repo.findAll();
+        var map = all.stream().collect(java.util.stream.Collectors.toMap(Category::getId, c -> c));
+        int order = 1;
+        for (Long id : orderedIds) {
+            Category c = map.remove(id);
+            if (c == null) continue;
+            c.updateSortOrder(order++);
+        }
+        if (!map.isEmpty()) {
+            for (Category c : map.values()) {
+                c.updateSortOrder(order++);
+            }
+        }
     }
 
     private void requireAdmin(User u) {

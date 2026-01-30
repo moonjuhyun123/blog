@@ -7,6 +7,7 @@ public record PostDetail(
         String title,
         PostSummary.Category category,
         int likeCount,
+        boolean isPinned,
         boolean isPrivate,
         LocalDateTime createdAt,
         String contentMd,

@@ -1,6 +1,10 @@
 spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:backend/.env[.properties]
   application:
     name: blog
+  profiles:
+    default: dev
 
   jpa:
     hibernate:
@@ -29,7 +33,7 @@ security:
     access-valid-seconds: 1800
     refresh-valid-seconds: 1209600
     cookie:
-      domain: ITMOON.site
+      domain: ""
       secure: false
       same-site: Lax
     secret-base64: Rm9vQmFyS2V5X0Rldl9PTkxZX0RvX05PVF9VU0VfVGhpc19pcy1Kb3N0X2FuX2V4YW1wbGVfc2VjcmV0XzEyMzQ1Njc4OTA=
@@ -68,6 +72,8 @@ spring:
     console:
       enabled: true
       path: /h2-console
+      settings:
+        web-allow-others: true
 
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
@@ -79,6 +85,10 @@ server:
 app:
   upload-dir: ./uploads-dev
 
+security:
+  jwt:
+    cookie:
+      domain: ""
 
 # ==================================================
 # ================= PROD (MariaDB) =================
@@ -104,6 +114,7 @@ server:
 security:
   jwt:
     cookie:
+      domain: ITMOON.site
       secure: true
 
 app:

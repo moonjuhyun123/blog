@@ -37,7 +37,11 @@ public class PostService {
 
     public PageResponse<PostSummary> search(Integer page, Integer size, String title, String categoryIds, Boolean includePrivate, User current) {
         boolean admin = current != null && current.getRole()== UserRole.ADMIN && Boolean.TRUE.equals(includePrivate);
-        Pageable pageable = PageRequest.of(page==null?0:page, size==null?10:size, Sort.by(Sort.Direction.DESC,"createdAt"));
+        Pageable pageable = PageRequest.of(
+                page==null?0:page,
+                size==null?10:size,
+                Sort.by(Sort.Order.desc("isPinned"), Sort.Order.desc("createdAt"))
+        );
 
         Page<Post> p;
         if (categoryIds != null && !categoryIds.isBlank()) {
@@ -61,13 +65,18 @@ public class PostService {
         return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages());
     }
 
-    public PageResponse<PostSummary> listByCategory(Long categoryId, Integer page, Integer size, String title) {
-        Pageable pageable = PageRequest.of(page==null?0:page, size==null?10:size, Sort.by(Sort.Direction.DESC,"createdAt"));
+    public PageResponse<PostSummary> listByCategory(Long categoryId, Integer page, Integer size, String title, Boolean includePrivate, User current) {
+        Pageable pageable = PageRequest.of(
+                page==null?0:page,
+                size==null?10:size,
+                Sort.by(Sort.Order.desc("isPinned"), Sort.Order.desc("createdAt"))
+        );
         Category c = categories.findById(categoryId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Not Found"));
+        boolean admin = current != null && current.getRole()== UserRole.ADMIN && Boolean.TRUE.equals(includePrivate);
         Page<Post> p = (title==null || title.isBlank())
                 ? posts.findByCategory(c, pageable)
                 : posts.findByTitleContainingIgnoreCase(title, pageable);
-        var content = p.stream().filter(po->!po.isPrivate())
+        var content = p.stream().filter(po -> admin || !po.isPrivate())
                 .map(po-> DtoMapper.toPostSummary(po, (int)likes.countByPost(po))).toList();
         return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages());
     }
@@ -112,6 +121,17 @@ public class PostService {
         return DtoMapper.toPostDetail(p, likeCount);
     }
 
+    @Transactional(readOnly = true)
+    public PostSummary getPinned(User current) {
+        var pinned = posts.findFirstByIsPinnedTrueOrderByCreatedAtDesc().orElse(null);
+        if (pinned == null) return null;
+        if (pinned.isPrivate()) {
+            if (current == null || current.getRole() != UserRole.ADMIN) return null;
+        }
+        int likeCount = (int) likes.countByPost(pinned);
+        return DtoMapper.toPostSummary(pinned, likeCount);
+    }
+
     @Transactional
     public IdOnly update(Long id, PostUpdateRequest body, User admin) {
         requireAdmin(admin);
@@ -125,6 +145,17 @@ public class PostService {
         }
         if (body.contentMd()!=null) p.updateContent(body.contentMd(), Markdown.toHtml(body.contentMd()));
         if (body.isPrivate()!=null) p.setPrivate(body.isPrivate());
+        return new IdOnly(p.getId());
+    }
+
+    @Transactional
+    public IdOnly pin(Long id, boolean pinned, User admin) {
+        requireAdmin(admin);
+        Post p = posts.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Not Found"));
+        if (pinned) {
+            posts.unpinAllExcept(p.getId());
+        }
+        p.setPinned(pinned);
         return new IdOnly(p.getId());
     }
 

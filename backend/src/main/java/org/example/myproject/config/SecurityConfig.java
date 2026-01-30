@@ -32,11 +32,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration cfg = new CorsConfiguration();
                     cfg.setAllowCredentials(true);
-                    cfg.setAllowedOrigins(List.of("http://localhost:5173")); // Vite
+                    cfg.setAllowedOriginPatterns(List.of("*"));
                     cfg.setAllowedMethods(List.of("GET","POST","PATCH","PUT","DELETE","OPTIONS"));
                     cfg.setAllowedHeaders(List.of("*"));
-                    // 필요하면 노출 헤더 추가 (대부분 불필요)
-                    // cfg.setExposedHeaders(List.of("Set-Cookie"));
                     return cfg;
                 }))
                 .authorizeHttpRequests(auth -> auth
@@ -50,9 +48,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/register","/api/auth/login","/api/auth/google","/api/auth/refresh",
-                                "/api/ping","/api/analytics/visit", "/internal/briefing/**").permitAll()
+                                "/api/ping","/api/analytics/visit").permitAll()
                         .requestMatchers(HttpMethod.GET,
-                                "/api/categories","/api/categories/summary","/api/posts","/api/categories/*/posts","/api/posts/*").permitAll()
+                                "/api/categories","/api/categories/summary","/api/posts","/api/categories/*/posts","/api/posts/*","/api/posts/pinned",
+                                "/api/news","/api/news/*","/api/news/*/comments").permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(AbstractHttpConfigurer::disable)

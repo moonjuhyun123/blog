@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.myproject.dto.category.CategoryCreateRequest;
+import org.example.myproject.dto.category.CategoryOrderRequest;
 import org.example.myproject.dto.category.CategoryUpdateRequest;
 import org.example.myproject.dto.common.IdOnly;
 import org.example.myproject.service.CategoryService;
@@ -40,6 +41,13 @@ public class CategoryController {
     public ResponseEntity<?> delete(HttpServletRequest req, @PathVariable Long id) {
         var admin = users.requireUser(req);
         categories.delete(id, admin);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/order")
+    public ResponseEntity<?> reorder(HttpServletRequest req, @Valid @RequestBody CategoryOrderRequest body) {
+        var admin = users.requireUser(req);
+        categories.reorder(body.orderedIds(), admin);
         return ResponseEntity.noContent().build();
     }
 
