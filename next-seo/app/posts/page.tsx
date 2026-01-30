@@ -4,6 +4,7 @@ type PageResponse<T> = {
   size: number;
   totalElements: number;
   totalPages: number;
+  error?: string;
 };
 
 type PostSummary = {
@@ -32,15 +33,33 @@ async function fetchPosts(): Promise<PageResponse<PostSummary>> {
     size: "50",
     includePrivate: "false",
   });
-  const res = await fetch(`${baseUrl}/api/posts?${params.toString()}`, {
-    next: { revalidate: REVALIDATE_SECONDS },
-  });
+  try {
+    const res = await fetch(`${baseUrl}/api/posts?${params.toString()}`, {
+      next: { revalidate: REVALIDATE_SECONDS },
+    });
 
-  if (!res.ok) {
-    throw new Error(`Failed to load posts: ${res.status}`);
+    if (!res.ok) {
+      return {
+        content: [],
+        page: 0,
+        size: 0,
+        totalElements: 0,
+        totalPages: 1,
+        error: `API error: ${res.status}`,
+      };
+    }
+
+    return res.json();
+  } catch (err) {
+    return {
+      content: [],
+      page: 0,
+      size: 0,
+      totalElements: 0,
+      totalPages: 1,
+      error: "API connection failed",
+    };
   }
-
-  return res.json();
 }
 
 export const revalidate = REVALIDATE_SECONDS;
@@ -51,6 +70,12 @@ export default async function PostsPage() {
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "40px 20px" }}>
       <h1>Posts</h1>
+      {data.error && (
+        <p style={{ marginTop: 12, color: "#c67b00" }}>
+          게시글 API에 연결할 수 없습니다. 백엔드 서버 상태와
+          `API_BASE_URL`을 확인하세요.
+        </p>
+      )}
       <ul style={{ listStyle: "none", padding: 0, marginTop: 24 }}>
         {data.content.map((post) => (
           <li key={post.id} style={{ padding: "12px 0", borderBottom: "1px solid #222" }}>

@@ -44,16 +44,18 @@ async function fetchPost(slug: string): Promise<PostDetail | null> {
   if (Number.isNaN(id)) return null;
 
   const baseUrl = getApiBaseUrl();
-  const res = await fetch(`${baseUrl}/api/posts/${id}`, {
-    next: { revalidate: REVALIDATE_SECONDS },
-  });
+  try {
+    const res = await fetch(`${baseUrl}/api/posts/${id}`, {
+      next: { revalidate: REVALIDATE_SECONDS },
+    });
 
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error(`Failed to load post: ${res.status}`);
+    if (res.status === 404) return null;
+    if (!res.ok) return null;
+
+    return res.json();
+  } catch {
+    return null;
   }
-
-  return res.json();
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
@@ -89,7 +91,16 @@ export default async function PostDetailPage({
   params: { slug: string };
 }) {
   const post = await fetchPost(params.slug);
-  if (!post) notFound();
+  if (!post) {
+    return (
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: "40px 20px" }}>
+        <h1>게시글을 불러올 수 없습니다</h1>
+        <p style={{ marginTop: 12, color: "#c67b00" }}>
+          백엔드 서버 상태와 `API_BASE_URL`을 확인하세요.
+        </p>
+      </main>
+    );
+  }
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "40px 20px" }}>
