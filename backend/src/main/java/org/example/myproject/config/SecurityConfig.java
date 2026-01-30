@@ -50,7 +50,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/register","/api/auth/login","/api/auth/google","/api/auth/refresh",
-                                "/api/ping","/api/analytics/visit").permitAll()
+                                "/api/ping","/api/analytics/visit", "/internal/briefing/**").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/categories","/api/categories/summary","/api/posts","/api/categories/*/posts","/api/posts/*").permitAll()
                         .anyRequest().authenticated()
