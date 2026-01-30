@@ -1,16 +1,12 @@
-import { notFound } from "next/navigation";
-import PostInteractions from "../../components/PostInteractions";
+import type { Metadata } from "next";
+import NewsInteractions from "../../components/NewsInteractions";
 
-type PostDetail = {
+type NewsDetail = {
   id: number;
-  title: string;
-  category?: { id: number; name: string; slug: string } | null;
-  likeCount: number;
-  isPrivate: boolean;
+  briefingDate: string;
+  contentHtml: string;
   createdAt: string;
-  contentMd?: string | null;
-  contentHtml?: string | null;
-  updatedAt?: string | null;
+  likeCount: number;
 };
 
 const REVALIDATE_SECONDS = 0;
@@ -31,28 +27,20 @@ function stripHtml(input: string) {
   return input.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function buildDescription(post: PostDetail) {
-  const raw =
-    post.contentHtml?.trim() ||
-    post.contentMd?.trim() ||
-    `${post.title} 게시글입니다.`;
+function buildDescription(item: NewsDetail) {
+  const raw = item.contentHtml?.trim() || `${item.briefingDate} 보안 뉴스`;
   const clean = stripHtml(raw);
   return clean.length > 180 ? `${clean.slice(0, 180)}…` : clean;
 }
 
-async function fetchPost(slug: string): Promise<PostDetail | null> {
-  const id = Number(slug);
-  if (Number.isNaN(id)) return null;
-
+async function fetchNews(date: string): Promise<NewsDetail | null> {
   const baseUrl = getApiBaseUrl();
   try {
-    const res = await fetch(`${baseUrl}/api/posts/${id}`, {
+    const res = await fetch(`${baseUrl}/api/news/${date}`, {
       cache: "no-store",
     });
-
     if (res.status === 404) return null;
     if (!res.ok) return null;
-
     return res.json();
   } catch {
     return null;
@@ -62,37 +50,35 @@ async function fetchPost(slug: string): Promise<PostDetail | null> {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const post = await fetchPost(slug);
-  if (!post) {
+  params: Promise<{ date: string }>;
+}): Promise<Metadata> {
+  const { date } = await params;
+  const item = await fetchNews(date);
+  if (!item) {
     return {
-      title: "게시글을 찾을 수 없습니다",
-      description: "요청한 게시글을 찾을 수 없습니다.",
+      title: "뉴스를 찾을 수 없습니다",
+      description: "요청한 보안 뉴스가 없습니다.",
     };
   }
 
-  const description = buildDescription(post);
+  const description = buildDescription(item);
   const siteUrl = getSiteUrl();
-  const url = new URL(`/posts/${slug}`, siteUrl).toString();
+  const url = new URL(`/news/${date}`, siteUrl).toString();
 
   return {
-    title: post.title,
+    title: `${date} 주요 보안 뉴스`,
     description,
     alternates: { canonical: url },
     openGraph: {
-      title: post.title,
+      title: `${date} 주요 보안 뉴스`,
       description,
       type: "article",
       url,
-      publishedTime: post.createdAt,
-      modifiedTime: post.updatedAt ?? post.createdAt,
       images: [{ url: new URL("/shield.png", siteUrl).toString() }],
     },
     twitter: {
       card: "summary",
-      title: post.title,
+      title: `${date} 주요 보안 뉴스`,
       description,
       images: [new URL("/shield.png", siteUrl).toString()],
     },
@@ -101,17 +87,18 @@ export async function generateMetadata({
 
 export const revalidate = REVALIDATE_SECONDS;
 
-export default async function PostDetailPage({
+export default async function NewsDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ date: string }>;
 }) {
-  const { slug } = await params;
-  const post = await fetchPost(slug);
-  if (!post) {
+  const { date } = await params;
+  const item = await fetchNews(date);
+
+  if (!item) {
     return (
       <main style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
-        <h1>게시글을 불러올 수 없습니다</h1>
+        <h1>뉴스를 불러올 수 없습니다</h1>
         <p style={{ marginTop: 12, color: "#c67b00" }}>
           백엔드 서버 상태와 `API_BASE_URL`을 확인하세요.
         </p>
@@ -122,35 +109,28 @@ export default async function PostDetailPage({
   return (
     <main style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
       <header style={{ marginBottom: 24 }}>
-        <h1 style={{ marginBottom: 8 }}>{post.title}</h1>
+        <h1 style={{ marginBottom: 8 }}>{date} 주요 보안 뉴스</h1>
         <div style={{ color: "#888", fontSize: 13 }}>
-          {post.category?.name ? `#${post.category.name}` : "#uncategorized"} ·{" "}
-          {new Date(post.createdAt).toLocaleString()} · ❤ {post.likeCount}
+          {new Date(item.briefingDate).toLocaleDateString("ko-KR")} · ❤{" "}
+          {item.likeCount}
         </div>
       </header>
+
       <article className="post__content" style={{ position: "relative" }}>
-        {post.contentHtml || post.contentMd ? (
-          <div
-            dangerouslySetInnerHTML={{
-              __html: post.contentHtml || post.contentMd || "",
-            }}
-          />
-        ) : (
-          <p>(내용 없음)</p>
-        )}
+        <div dangerouslySetInnerHTML={{ __html: item.contentHtml }} />
       </article>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
-            "@type": "BlogPosting",
-            headline: post.title,
-            datePublished: post.createdAt,
-            dateModified: post.updatedAt ?? post.createdAt,
+            "@type": "NewsArticle",
+            headline: `${date} 주요 보안 뉴스`,
+            datePublished: item.createdAt ?? item.briefingDate,
+            dateModified: item.createdAt ?? item.briefingDate,
             mainEntityOfPage: {
               "@type": "WebPage",
-              "@id": new URL(`/posts/${post.id}`, getSiteUrl()).toString(),
+              "@id": new URL(`/news/${date}`, getSiteUrl()).toString(),
             },
             author: {
               "@type": "Organization",
@@ -163,7 +143,7 @@ export default async function PostDetailPage({
           }),
         }}
       />
-      <PostInteractions postId={post.id} initialLikeCount={post.likeCount} />
+      <NewsInteractions newsId={item.id} initialLikeCount={item.likeCount} />
     </main>
   );
 }

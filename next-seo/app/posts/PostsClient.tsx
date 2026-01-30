@@ -1,40 +1,73 @@
-import { useEffect, useState } from "react";
-import {
-  Link,
-  useParams,
-  useSearchParams,
-  useLocation,
-} from "react-router-dom";
-import { listPostsByCategory } from "../api/client";
-import type { PageResponsePostSummary } from "../api/types";
+"use client";
 
-export default function CategoryPosts() {
-  const seoBaseUrl = (import.meta.env.VITE_SEO_BASE_URL ?? "").replace(/\/+$/, "");
-  const seoPostUrl = (postId: number) =>
-    `${seoBaseUrl}/posts/${postId}`;
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { listPosts, me, pinPost } from "../../lib/api";
+import type { PageResponse, PostSummary, User } from "../../lib/types";
 
-  const { categoryId } = useParams();
-  const cid = Number(categoryId);
-  const [sp, setSp] = useSearchParams();
-  const [data, setData] = useState<PageResponsePostSummary | null>(null);
+export default function PostsClient({
+  initialData,
+  initialQueryKey,
+}: {
+  initialData?: PageResponse<PostSummary> | null;
+  initialQueryKey?: string;
+}) {
+  const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [data, setData] = useState<PageResponse<PostSummary> | null>(
+    initialData ?? null
+  );
   const [loading, setLoading] = useState(false);
-  const loc = useLocation() as { state?: { slug?: string; name?: string } };
+  const [user, setUser] = useState<User | null>(null);
+  const isAdmin = user?.role === "ADMIN";
 
   const page = Number(sp.get("page") ?? 0);
   const size = Number(sp.get("size") ?? 10);
   const title = sp.get("title") ?? "";
 
-  // 🔍 입력값은 별도의 draft로 관리 (쿼리와 분리)
   const [draftTitle, setDraftTitle] = useState(title);
   useEffect(() => setDraftTitle(title), [title]);
 
+  useEffect(() => {
+    me()
+      .then(setUser)
+      .catch(() => setUser(null));
+  }, []);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await listPosts({ page, size, title });
+      setData(res);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const currentQueryKey = JSON.stringify({ page, size, title });
+  const skipFirstLoadRef = useRef(true);
+  useEffect(() => {
+    if (
+      skipFirstLoadRef.current &&
+      initialData &&
+      initialQueryKey === currentQueryKey
+    ) {
+      skipFirstLoadRef.current = false;
+      return;
+    }
+    skipFirstLoadRef.current = false;
+    load();
+  }, [page, size, title, currentQueryKey, initialData, initialQueryKey]);
+
   const setParams = (entries: Record<string, string | null | undefined>) => {
-    const next = new URLSearchParams(sp);
+    const next = new URLSearchParams(sp.toString());
     for (const [k, v] of Object.entries(entries)) {
       if (v !== undefined && v !== null && v !== "") next.set(k, String(v));
       else next.delete(k);
     }
-    setSp(next, { replace: true });
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
   };
 
   const doSearch = () => setParams({ title: draftTitle, page: "0" });
@@ -43,42 +76,24 @@ export default function CategoryPosts() {
     setParams({ title: "", page: "0" });
   };
 
-  const load = async () => {
-    if (Number.isNaN(cid)) return;
-    setLoading(true);
-    try {
-      const res = await listPostsByCategory(cid, { page, size, title });
-      setData(res);
-    } finally {
-      setLoading(false);
-    }
+  const togglePin = async (id: number, nextPinned: boolean) => {
+    await pinPost(id, nextPinned);
+    await load();
   };
-
-  useEffect(() => {
-    load();
-  }, [cid, page, size, title]);
-
-  if (Number.isNaN(cid)) return <p>Invalid category</p>;
-
-  const inferredSlug =
-    loc.state?.slug || (data?.content?.[0]?.category?.slug ?? undefined);
-  const inferredName =
-    loc.state?.name || (data?.content?.[0]?.category?.name ?? undefined);
 
   return (
     <div>
-      <h1>{inferredSlug ? `#${inferredName}` : `#${cid}`}</h1>
+      <h1>FEED</h1>
 
       <div className="toolbar">
-        {/* 🔍 검색창 + X버튼 (PostList와 동일 패턴) */}
         <div className="searchbar">
           <input
             className="searchbar__input"
             placeholder="Search title…"
             value={draftTitle}
             onChange={(e) => setDraftTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && doSearch()}
           />
+
           <button
             type="button"
             className="searchbar__btn"
@@ -101,6 +116,7 @@ export default function CategoryPosts() {
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
+
           {draftTitle && (
             <button
               type="button"
@@ -114,9 +130,11 @@ export default function CategoryPosts() {
           )}
         </div>
 
-        <Link to="/posts" className="btn">
-          All Posts
-        </Link>
+        {isAdmin && (
+          <a href="/posts/new" className="btn">
+            Write
+          </a>
+        )}
       </div>
 
       {loading && <p>Loading…</p>}
@@ -124,23 +142,26 @@ export default function CategoryPosts() {
       <ul className="list">
         {data?.content.map((p) => (
           <li key={p.id} className="list__item">
-            <a href={seoPostUrl(p.id)} className="title">
+            <a href={`/posts/${p.id}`} className="title">
               {p.title}
+              {p.isPinned && <span className="badge" style={{ marginLeft: 8 }}>Pinned</span>}
             </a>
             <div className="meta">
-              {p.category && (
-                <Link
-                  to={`/categories/${p.category.id}`}
-                  state={{ slug: p.category.slug, name: p.category.name }}
-                  title={p.category.name}
-                >
-                  #{p.category.name}
-                </Link>
-              )}
+              <a href={`/categories/${p.category.id}`}>#{p.category?.name}</a>
               <span>❤ {p.likeCount}</span>
               {p.isPrivate && <span className="badge">Private</span>}
               <span>{new Date(p.createdAt).toLocaleString()}</span>
             </div>
+            {isAdmin && (
+              <div className="row" style={{ marginTop: 6 }}>
+                <button
+                  className="btn"
+                  onClick={() => togglePin(p.id, !p.isPinned)}
+                >
+                  {p.isPinned ? "Unpin" : "Pin"}
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>

@@ -1,24 +1,39 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { listPosts, me } from "../api/client";
-import type { PageResponsePostSummary, User } from "../api/types";
+"use client";
 
-export default function PostList() {
-  const seoBaseUrl = (import.meta.env.VITE_SEO_BASE_URL ?? "").replace(/\/+$/, "");
-  const seoPostUrl = (postId: number) =>
-    `${seoBaseUrl}/posts/${postId}`;
+import { useEffect, useRef, useState } from "react";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import { listCategorySummary, listPostsByCategory, me, pinPost } from "../../../lib/api";
+import type { PageResponse, PostSummary, User } from "../../../lib/types";
 
-  const [sp, setSp] = useSearchParams();
-  const [data, setData] = useState<PageResponsePostSummary | null>(null);
+export default function CategoryPostsClient({
+  initialData,
+  initialCategoryName,
+  initialQueryKey,
+}: {
+  initialData?: PageResponse<PostSummary> | null;
+  initialCategoryName?: string | null;
+  initialQueryKey?: string;
+}) {
+  const params = useParams<{ id: string }>();
+  const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const categoryId = Number(params?.id);
+
+  const [data, setData] = useState<PageResponse<PostSummary> | null>(
+    initialData ?? null
+  );
   const [loading, setLoading] = useState(false);
+  const [categoryName, setCategoryName] = useState<string | null>(
+    initialCategoryName ?? null
+  );
   const [user, setUser] = useState<User | null>(null);
-  const isAdmin = user?.role === "ADMIN";
 
   const page = Number(sp.get("page") ?? 0);
   const size = Number(sp.get("size") ?? 10);
   const title = sp.get("title") ?? "";
-
   const [draftTitle, setDraftTitle] = useState(title);
+
   useEffect(() => setDraftTitle(title), [title]);
 
   useEffect(() => {
@@ -27,26 +42,54 @@ export default function PostList() {
       .catch(() => setUser(null));
   }, []);
 
+  useEffect(() => {
+    if (initialCategoryName != null) return;
+    listCategorySummary()
+      .then((cats) => {
+        setCategoryName(cats.find((c) => c.id === categoryId)?.name ?? null);
+      })
+      .catch(() => setCategoryName(null));
+  }, [categoryId, initialCategoryName]);
+
   const load = async () => {
+    if (Number.isNaN(categoryId)) return;
     setLoading(true);
     try {
-      const res = await listPosts({ page, size, title });
+      const res = await listPostsByCategory(categoryId, {
+        page,
+        size,
+        title,
+        includePrivate: user?.role === "ADMIN",
+      });
       setData(res);
     } finally {
       setLoading(false);
     }
   };
+
+  const currentQueryKey = JSON.stringify({ categoryId, page, size, title });
+  const skipFirstLoadRef = useRef(true);
   useEffect(() => {
+    if (
+      skipFirstLoadRef.current &&
+      initialData &&
+      initialQueryKey === currentQueryKey
+    ) {
+      skipFirstLoadRef.current = false;
+      return;
+    }
+    skipFirstLoadRef.current = false;
     load();
-  }, [page, size, title]);
+  }, [categoryId, page, size, title, user?.role, currentQueryKey, initialData, initialQueryKey]);
 
   const setParams = (entries: Record<string, string | null | undefined>) => {
-    const next = new URLSearchParams(sp);
+    const next = new URLSearchParams(sp.toString());
     for (const [k, v] of Object.entries(entries)) {
       if (v !== undefined && v !== null && v !== "") next.set(k, String(v));
       else next.delete(k);
     }
-    setSp(next, { replace: true });
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
   };
 
   const doSearch = () => setParams({ title: draftTitle, page: "0" });
@@ -55,12 +98,20 @@ export default function PostList() {
     setParams({ title: "", page: "0" });
   };
 
+  const togglePin = async (id: number, nextPinned: boolean) => {
+    await pinPost(id, nextPinned);
+    await load();
+  };
+
+  if (Number.isNaN(categoryId)) {
+    return <div className="card">잘못된 카테고리</div>;
+  }
+
   return (
     <div>
-      <h1>FEED</h1>
+      <h1>{categoryName ? `#${categoryName}` : "Category"}</h1>
 
       <div className="toolbar">
-        {/* 🔍 검색창 + X버튼 */}
         <div className="searchbar">
           <input
             className="searchbar__input"
@@ -76,7 +127,6 @@ export default function PostList() {
             aria-label="Search"
             title="Search"
           >
-            {/* 돋보기 */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="18"
@@ -105,12 +155,6 @@ export default function PostList() {
             </button>
           )}
         </div>
-
-        {isAdmin && (
-          <Link to="/posts/new" className="btn">
-            Write
-          </Link>
-        )}
       </div>
 
       {loading && <p>Loading…</p>}
@@ -118,18 +162,25 @@ export default function PostList() {
       <ul className="list">
         {data?.content.map((p) => (
           <li key={p.id} className="list__item">
-            {/* SEO 전용 Next 라우트로 이동 */}
-            <a href={seoPostUrl(p.id)} className="title">
+            <a href={`/posts/${p.id}`} className="title">
               {p.title}
+              {p.isPinned && <span className="badge" style={{ marginLeft: 8 }}>Pinned</span>}
             </a>
             <div className="meta">
-              <Link to={`/categories/${p.category.id}`}>
-                #{p.category?.name}
-              </Link>
               <span>❤ {p.likeCount}</span>
               {p.isPrivate && <span className="badge">Private</span>}
               <span>{new Date(p.createdAt).toLocaleString()}</span>
             </div>
+            {user?.role === "ADMIN" && (
+              <div className="row" style={{ marginTop: 6 }}>
+                <button
+                  className="btn"
+                  onClick={() => togglePin(p.id, !p.isPinned)}
+                >
+                  {p.isPinned ? "Unpin" : "Pin"}
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>
