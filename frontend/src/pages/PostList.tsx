@@ -114,6 +114,7 @@ export default function PostList() {
       <ul className="list">
         {data?.content.map((p) => (
           <li key={p.id} className="list__item">
+            {/* SEO 전용 Next 라우트는 <a href={`/posts/${p.id}`}> 형태로 이동하도록 안내 */}
             <Link to={`/posts/${p.id}`} className="title">
               {p.title}
             </Link>
