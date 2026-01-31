@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Heading from "@tiptap/extension-heading";
-import ListItem from "@tiptap/extension-list-item";
 import Link from "@tiptap/extension-link";
 import { ResizableImage } from "../../components/ResizableImage";
 import { TextStyle } from "@tiptap/extension-text-style";
@@ -47,16 +46,10 @@ export default function PostCreatePage() {
     extensions: [
       StarterKit.configure({
         heading: false,
-        listItem: false,
         bulletList: { keepMarks: true, keepAttributes: true },
         orderedList: { keepMarks: true, keepAttributes: true },
       }),
       Heading.configure({ levels: [2] }),
-      ListItem.configure({
-        content: "(paragraph | heading) block*",
-        keepMarks: true,
-        keepAttributes: true,
-      }),
       Link.configure({ openOnClick: false }),
       ResizableImage.configure({ inline: true }),
       TextStyle,
