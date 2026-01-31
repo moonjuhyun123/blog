@@ -19,7 +19,7 @@ spec:
       - name: ghcr-secret
       containers:
       - name: backend
-        image: ghcr.io/OWNER/REPO/backend:latest  # GitHub Actions에서 자동으로 업데이트됨
+        image: ghcr.io/owner/repo/backend:latest  # GitHub Actions에서 set image로 덮어씀 (대문자면 InvalidImageName)
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -65,13 +65,13 @@ spec:
           httpGet:
             path: /actuator/health
             port: 8080
-          initialDelaySeconds: 60
+          initialDelaySeconds: 120   # Spring Boot + DB 초기화 여유 (60이면 부족해 크래시 가능)
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /actuator/health
             port: 8080
-          initialDelaySeconds: 30
+          initialDelaySeconds: 90    # 앱 기동 후 준비될 때까지 대기
           periodSeconds: 5
 ---
 apiVersion: v1

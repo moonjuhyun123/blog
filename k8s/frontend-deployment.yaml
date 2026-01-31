@@ -20,7 +20,7 @@ spec:
       containers:
       - name: frontend
         # 배포 전 이미지 주소를 실제로 변경 (예: ghcr.io/moonjuhyun123/blog/frontend:latest)
-        image: ghcr.io/OWNER/REPO/frontend:latest
+        image: ghcr.io/owner/repo/frontend:latest  # GitHub Actions에서 set image로 덮어씀
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

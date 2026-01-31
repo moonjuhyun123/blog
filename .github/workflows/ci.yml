@@ -56,6 +56,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      # kubeconfig 권한 오류 시: CICD-QUICKSTART.md "kubeconfig: permission denied" 참고
+      - name: Verify kubectl access
+        run: |
+          kubectl cluster-info || (echo "::error::kubectl 접근 실패. K3s 서버에서 Runner 사용자에게 kubeconfig 권한을 설정하세요. CICD-QUICKSTART.md 트러블슈팅 참고." && exit 1)
+      
       - name: Create GHCR Pull Secret
         run: |
           kubectl delete secret ghcr-secret -n ${{ env.NAMESPACE }} --ignore-not-found
@@ -65,15 +70,16 @@ jobs:
             --docker-password=${{ secrets.GITHUB_TOKEN }} \
             --docker-email=${{ github.actor }}@users.noreply.github.com
       
+      # ConfigMap 먼저 적용 (DB_HOST 등). 그 다음 Secret 적용해야 Secret이 덮어쓰이지 않음
+      - name: Apply ConfigMap
+        run: kubectl apply -f k8s/database-config.yaml -n ${{ env.NAMESPACE }}
+      
       - name: Update DB Secret
         run: |
           kubectl delete secret blog-db-secret -n ${{ env.NAMESPACE }} --ignore-not-found
           kubectl create secret generic blog-db-secret -n ${{ env.NAMESPACE }} \
             --from-literal=DB_USER=csr \
             --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
-      
-      - name: Apply ConfigMap
-        run: kubectl apply -f k8s/database-config.yaml -n ${{ env.NAMESPACE }}
       
       - name: Deploy Backend
         run: |
