@@ -103,7 +103,7 @@ jobs:
       - name: Wait for Rollout
         id: rollout
         run: |
-          kubectl rollout status deployment/blog-backend -n ${{ env.NAMESPACE }} --timeout=600s
+          kubectl rollout status deployment/blog-backend -n ${{ env.NAMESPACE }} --timeout=900s
           kubectl rollout status deployment/blog-frontend -n ${{ env.NAMESPACE }} --timeout=300s
       
       # Rollout 실패 시 Pod 이벤트·로그를 Actions에 출력 (서버 접속 없이 원인 확인)

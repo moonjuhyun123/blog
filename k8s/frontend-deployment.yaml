@@ -36,13 +36,14 @@ spec:
         # 공개 URL (사이트맵, canonical, OGP). yourdomain.com 을 실제 도메인으로 변경
         - name: SITE_URL
           value: "https://yourdomain.com"
+        # 8GB 서버: 프론트엔드 여유 할당
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
             memory: "512Mi"
             cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
         livenessProbe:
           httpGet:
             path: /
