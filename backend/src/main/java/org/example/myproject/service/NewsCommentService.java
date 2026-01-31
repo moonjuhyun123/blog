@@ -10,7 +10,6 @@ import org.example.myproject.entity.news.NewsComment;
 import org.example.myproject.entity.user.User;
 import org.example.myproject.entity.user.UserRole;
 import org.example.myproject.exception.ApiException;
-import org.example.myproject.mapper.DtoMapper;
 import org.example.myproject.repository.news.NewsBriefingRepository;
 import org.example.myproject.repository.news.NewsCommentRepository;
 import org.springframework.http.HttpStatus;
@@ -29,7 +28,7 @@ public class NewsCommentService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Not Found"));
         return comments.findByBriefing(briefing, org.springframework.data.domain.Pageable.unpaged())
                 .stream()
-                .map(DtoMapper::toCommentDto)
+                .map(CommentDto::from)
                 .toList();
     }
 

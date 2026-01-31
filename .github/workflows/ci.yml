@@ -9,10 +9,38 @@ permissions:
   packages: write
 
 env:
-  IMAGE: ghcr.io/${{ github.repository }}/game:latest
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend:latest
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend:latest
 
 jobs:
-  build-and-push:
+  build-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+          cache: maven
+
+      - name: Maven package
+        working-directory: backend
+        run: mvn -B -DskipTests clean package
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Docker build backend
+        run: docker build -t "${{ env.BACKEND_IMAGE }}" -f Dockerfile.backend .
+
+      - name: Docker push backend
+        run: docker push "${{ env.BACKEND_IMAGE }}"
+
+  build-frontend:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,38 +52,13 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Frontend build (Vite)
-        working-directory: frontend
-        run: |
-          #npm ci
-          npm i --legacy-peer-deps   # 우선 이대로 하고 나중에 수정
-          npm run build
-
-      - name: Copy dist to Spring static
-        run: |
-          rm -rf backend/src/main/resources/static/*
-          mkdir -p backend/src/main/resources/static
-          cp -r frontend/dist/* backend/src/main/resources/static/
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "17"
-          cache: maven
-
-      - name: Maven package (backend)
-        working-directory: backend
-        run: |
-          mvn -B -DskipTests clean package
+          cache-dependency-path: next-seo/package-lock.json
 
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Docker build
-        run: docker build -t "${{ env.IMAGE }}" .
+      - name: Docker build frontend
+        run: docker build -t "${{ env.FRONTEND_IMAGE }}" -f Dockerfile.frontend .
 
-      - name: Docker push
-        run: docker push "${{ env.IMAGE }}"
+      - name: Docker push frontend
+        run: docker push "${{ env.FRONTEND_IMAGE }}"

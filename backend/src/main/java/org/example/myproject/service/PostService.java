@@ -17,7 +17,6 @@ import org.example.myproject.entity.category.Category;
 import org.example.myproject.entity.user.User;
 import org.example.myproject.entity.user.UserRole;
 import org.example.myproject.exception.ApiException;
-import org.example.myproject.mapper.DtoMapper;
 import org.example.myproject.repository.category.CategoryRepository;
 import org.example.myproject.repository.like.PostLikeRepository;
 import org.example.myproject.repository.post.PostRepository;
@@ -60,7 +59,7 @@ public class PostService {
 
         List<PostSummary> content = p.stream()
                 .filter(po -> admin || !po.isPrivate()) // 비관리자는 비공개 제외
-                .map(po -> DtoMapper.toPostSummary(po, (int) likes.countByPost(po)))
+                .map(po -> PostSummary.from(po, (int) likes.countByPost(po)))
                 .toList();
         return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages());
     }
@@ -77,7 +76,7 @@ public class PostService {
                 ? posts.findByCategory(c, pageable)
                 : posts.findByTitleContainingIgnoreCase(title, pageable);
         var content = p.stream().filter(po -> admin || !po.isPrivate())
-                .map(po-> DtoMapper.toPostSummary(po, (int)likes.countByPost(po))).toList();
+                .map(po -> PostSummary.from(po, (int) likes.countByPost(po))).toList();
         return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages());
     }
 
@@ -118,7 +117,7 @@ public class PostService {
             if (current==null || current.getRole()!=UserRole.ADMIN) throw new ApiException(HttpStatus.NOT_FOUND, "Not Found");
         }
         int likeCount = (int) likes.countByPost(p);
-        return DtoMapper.toPostDetail(p, likeCount);
+        return PostDetail.from(p, likeCount);
     }
 
     @Transactional(readOnly = true)
@@ -129,7 +128,7 @@ public class PostService {
             if (current == null || current.getRole() != UserRole.ADMIN) return null;
         }
         int likeCount = (int) likes.countByPost(pinned);
-        return DtoMapper.toPostSummary(pinned, likeCount);
+        return PostSummary.from(pinned, likeCount);
     }
 
     @Transactional

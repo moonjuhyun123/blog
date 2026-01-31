@@ -11,7 +11,6 @@ import org.example.myproject.dto.user.UserDto;
 import org.example.myproject.entity.user.User;
 import org.example.myproject.entity.user.UserRole;
 import org.example.myproject.exception.ApiException;
-import org.example.myproject.mapper.DtoMapper;
 import org.example.myproject.repository.user.UserRepository;
 import org.example.myproject.security.JwtProvider;
 import org.example.myproject.util.MediaUtils;
@@ -94,7 +93,7 @@ public class UserService {
         }
 
         // 4) 반환 (더티체킹)
-        return DtoMapper.toUserDto(u);
+        return UserDto.from(u);
     }
 
 
@@ -103,7 +102,7 @@ public class UserService {
         if (admin.getRole() != UserRole.ADMIN) throw new ApiException(HttpStatus.FORBIDDEN, "Forbidden");
         User target = userRepo.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Not Found"));
         if (blocked) target.block(); else target.unblock();
-        return new UserDto(target.getId(), target.getEmail(), target.getDisplayName(), target.getProfileImageUrl(), target.getRole(), target.isBlocked());
+        return UserDto.from(target);
     }
 
 

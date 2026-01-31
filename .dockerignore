@@ -1,5 +1,7 @@
 **/node_modules
 **/dist
+**/.next
+**/out
 **/target
 **/.idea
 **/*.iml
@@ -7,4 +9,5 @@
 .gitignore
 README.md
 *.log
+frontend/
 !backend/target/*.jar

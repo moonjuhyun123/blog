@@ -13,7 +13,6 @@ import org.example.myproject.entity.category.Category;
 import org.example.myproject.entity.user.User;
 import org.example.myproject.entity.user.UserRole;
 import org.example.myproject.exception.ApiException;
-import org.example.myproject.mapper.DtoMapper;
 import org.example.myproject.repository.category.CategoryRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,7 @@ public class CategoryService {
     public List<CategoryDto> list() {
         return repo.findAllByOrderBySortOrderAscCreatedAtAsc()
                 .stream()
-                .map(DtoMapper::toCategoryDto)
+                .map(CategoryDto::from)
                 .toList();
     }
 
@@ -55,7 +54,7 @@ public class CategoryService {
             f.set(c, req.name());
         } catch (Exception ignored) {
         }
-        return DtoMapper.toCategoryDto(c);
+        return CategoryDto.from(c);
     }
 
     @Transactional
