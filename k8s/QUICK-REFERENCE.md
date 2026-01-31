@@ -260,10 +260,12 @@ blog/
 
 ### 프론트엔드 (Next.js)
 
-| 변수                     | 설명            | 예시                         |
-| ---------------------- | ------------- | -------------------------- |
-| `NODE_ENV`             | Node 환경      | `production`               |
-| `NEXT_PUBLIC_API_URL` | 백엔드 API URL | `http://blog-backend:8080` |
+| 변수                     | 설명                         | K8s 예시 |
+| ---------------------- | -------------------------- | -------- |
+| `NODE_ENV`             | Node 환경                   | `production` |
+| `NEXT_PUBLIC_API_URL`  | 브라우저용 API 주소. **같은 도메인**이면 빈 값(상대 경로 `/api` 사용) | `""` |
+| `API_BASE_URL`         | 서버(SSR/사이트맵)용 API 주소. **클러스터 내부** 주소 | `http://blog-backend:8080` |
+| `SITE_URL`             | 공개 URL (사이트맵, canonical) | `https://yourdomain.com` |
 
 ---
 
@@ -354,6 +356,26 @@ kubectl get ingress
 
 ---
 
+## ⚙️ 쿠버네티스에서 돌아가게 할 설정
+
+서버(K8s)에 올렸을 때 **반드시 수정**할 것:
+
+| 파일 | 수정 내용 |
+|------|-----------|
+| `frontend-deployment.yaml` | `image`: `ghcr.io/OWNER/REPO/frontend:latest` → 실제 이미지 (예: `ghcr.io/moonjuhyun123/blog/frontend:latest`) |
+| `frontend-deployment.yaml` | `SITE_URL`: `https://yourdomain.com` → 실제 도메인 (사이트맵/OGP용) |
+| `backend-deployment.yaml` | `image`: `ghcr.io/OWNER/REPO/backend:latest` → 실제 이미지 |
+| `database-config.yaml` | `DB_HOST`: 4GB DB 서버 IP, `DB_PASSWORD`: 실제 비밀번호 |
+| `ingress.yaml` | `yourdomain.com` → 실제 도메인 (2곳: `tls.hosts`, `rules.host`) |
+| **Secret** | `kubectl create secret docker-registry ghcr-secret ...` 로 GHCR 인증 (이미지 pull용) |
+
+**동작 방식 요약**
+
+- 브라우저: `NEXT_PUBLIC_API_URL=""` 이므로 같은 도메인으로 `/api/...` 요청 → Ingress가 `/api`를 백엔드로 전달.
+- 프론트 Pod(SSR/사이트맵): `API_BASE_URL=http://blog-backend:8080` 로 클러스터 내부에서 백엔드 호출.
+
+---
+
 ## 📞 체크리스트
 
 배포 전 확인:
@@ -365,6 +387,10 @@ kubectl get ingress
 - [ ] 8GB 서버: Docker 설치
 - [ ] `database-config.yaml`: DB_HOST를 4GB 서버 IP로 변경
 - [ ] `database-config.yaml`: DB_PASSWORD 변경
+- [ ] `frontend-deployment.yaml` / `backend-deployment.yaml`: 이미지 주소를 실제 GHCR로 변경
+- [ ] `frontend-deployment.yaml`: SITE_URL을 실제 도메인으로 변경
+- [ ] `ingress.yaml`: yourdomain.com을 실제 도메인으로 변경
+- [ ] GHCR 이미지 pull용 Secret 생성 (`ghcr-secret`)
 
 배포 후 확인:
 
