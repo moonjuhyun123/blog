@@ -51,11 +51,20 @@ sudo ./svc.sh status
 
 **GitHub 저장소 → Settings → Secrets and variables → Actions → New repository secret**
 
-**1개만 추가:**
+**2개 추가:**
 
 | Name<br/>(그대로 복사) | Secret<br/>(본인 값으로 변경) |
 | -------------- | ------------------------------------ |
-| `DB_PASSWORD`  | `csrpass` ← 본인의 DB 비밀번호 |
+| `DB_PASSWORD`  | 본인의 DB 비밀번호 (예: `csrpass`) |
+| `GHCR_PAT`     | GHCR 이미지 pull용 **Personal Access Token** (아래 참고) |
+
+**GHCR_PAT 만드는 방법 (403 Forbidden 해결):**
+1. GitHub → **Settings** (본인 프로필) → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+2. **Generate new token (classic)** → 이름 예: `blog-ghcr-pull`
+3. 권한: **read:packages** 체크 (패키지 다운로드용)
+4. 생성된 토큰을 **한 번만** 복사 → 저장소 **Secrets** 에 이름 `GHCR_PAT`, 값에 붙여넣기
+
+> `GITHUB_TOKEN` 은 워크플로가 끝나면 만료되어, K8s가 나중에 이미지를 pull할 때 403이 납니다. **PAT(GHCR_PAT)** 는 만료되지 않아서 클러스터가 언제든 pull할 수 있습니다.
 
 ### 4️⃣ 코드 푸시
 
