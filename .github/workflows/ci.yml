@@ -61,14 +61,20 @@ jobs:
         run: |
           kubectl cluster-info || (echo "::error::kubectl 접근 실패. K3s 서버에서 Runner 사용자에게 kubeconfig 권한을 설정하세요. CICD-QUICKSTART.md 트러블슈팅 참고." && exit 1)
       
-      # GITHUB_TOKEN은 워크플로 종료 후 만료되어 403. PAT(secrets.GHCR_PAT) 사용 필요
+      # GHCR_PAT 없으면 비밀번호가 비어 있어 create secret 실패. 저장소 Secrets에 GHCR_PAT 추가 필요
       - name: Create GHCR Pull Secret
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
         run: |
+          if [ -z "$GHCR_PAT" ]; then
+            echo "::error::GHCR_PAT Secret이 없습니다. 저장소 Settings → Secrets and variables → Actions 에서 GHCR_PAT(PAT, read:packages) 추가 후 재실행하세요."
+            exit 1
+          fi
           kubectl delete secret ghcr-secret -n ${{ env.NAMESPACE }} --ignore-not-found
           kubectl create secret docker-registry ghcr-secret -n ${{ env.NAMESPACE }} \
             --docker-server=ghcr.io \
             --docker-username=${{ github.actor }} \
-            --docker-password="${{ secrets.GHCR_PAT }}" \
+            --docker-password="$GHCR_PAT" \
             --docker-email=${{ github.actor }}@users.noreply.github.com
       
       # ConfigMap 먼저 적용 (DB_HOST 등). 그 다음 Secret 적용해야 Secret이 덮어쓰이지 않음
