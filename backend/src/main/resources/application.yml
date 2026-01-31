@@ -142,9 +142,8 @@ spring:
 
   jpa:
     database-platform: org.hibernate.dialect.MariaDBDialect
-    # 프로덕션에서는 ddl-auto를 validate로 변경 권장
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update   # 스키마 자동 반영 (운영에서 validate 권장 시 변경)
     properties:
       hibernate:
         # 배치 크기 최적화
