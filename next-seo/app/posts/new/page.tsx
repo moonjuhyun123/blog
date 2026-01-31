@@ -186,7 +186,7 @@ export default function PostCreatePage() {
             type="button"
             className={editor?.isActive("bold") ? "is-active" : ""}
             onClick={() =>
-              runWithPreservedColor(() => editor.chain().focus().toggleBold().run())
+              runWithPreservedColor(() => editor?.chain().focus().toggleBold().run())
             }
           >
             Bold
@@ -195,7 +195,7 @@ export default function PostCreatePage() {
             type="button"
             className={editor?.isActive("italic") ? "is-active" : ""}
             onClick={() =>
-              runWithPreservedColor(() => editor.chain().focus().toggleItalic().run())
+              runWithPreservedColor(() => editor?.chain().focus().toggleItalic().run())
             }
           >
             Italic
@@ -204,7 +204,7 @@ export default function PostCreatePage() {
             type="button"
             className={editor?.isActive("strike") ? "is-active" : ""}
             onClick={() =>
-              runWithPreservedColor(() => editor.chain().focus().toggleStrike().run())
+              runWithPreservedColor(() => editor?.chain().focus().toggleStrike().run())
             }
           >
             Strike
@@ -214,7 +214,7 @@ export default function PostCreatePage() {
             className={editor?.isActive("heading", { level: 2 }) ? "is-active" : ""}
             onClick={() =>
               runWithPreservedColor(() =>
-                editor.chain().focus().toggleHeading({ level: 2 }).run()
+                editor?.chain().focus().toggleHeading({ level: 2 }).run()
               )
             }
           >
@@ -225,7 +225,7 @@ export default function PostCreatePage() {
             className={editor?.isActive("bulletList") ? "is-active" : ""}
             onClick={() =>
               runWithPreservedColor(() =>
-                editor.chain().focus().toggleBulletList().run()
+                editor?.chain().focus().toggleBulletList().run()
               )
             }
           >
@@ -236,7 +236,7 @@ export default function PostCreatePage() {
             className={editor?.isActive("orderedList") ? "is-active" : ""}
             onClick={() =>
               runWithPreservedColor(() =>
-                editor.chain().focus().toggleOrderedList().run()
+                editor?.chain().focus().toggleOrderedList().run()
               )
             }
           >
@@ -247,7 +247,7 @@ export default function PostCreatePage() {
             className={editor?.isActive("blockquote") ? "is-active" : ""}
             onClick={() =>
               runWithPreservedColor(() =>
-                editor.chain().focus().toggleBlockquote().run()
+                editor?.chain().focus().toggleBlockquote().run()
               )
             }
           >
@@ -259,7 +259,7 @@ export default function PostCreatePage() {
               const url = window.prompt("Link URL");
               if (!url) return;
               runWithPreservedColor(() =>
-                editor.chain().focus().setLink({ href: url }).run()
+                editor?.chain().focus().setLink({ href: url }).run()
               );
             }}
           >
@@ -268,7 +268,7 @@ export default function PostCreatePage() {
           <button
             type="button"
             onClick={() =>
-              runWithPreservedColor(() => editor.chain().focus().unsetLink().run())
+              runWithPreservedColor(() => editor?.chain().focus().unsetLink().run())
             }
           >
             Unlink
