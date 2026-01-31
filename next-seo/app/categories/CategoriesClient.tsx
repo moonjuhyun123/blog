@@ -60,7 +60,22 @@ export default function CategoriesClient({
   };
 
   const remove = async (id: number) => {
-    if (!confirm("이 카테고리를 삭제할까요?")) return;
+    const category = cats.find((c) => c.id === id);
+    if (!category) return;
+
+    // 게시글이 있으면 경고
+    if (category.postCount > 0) {
+      if (
+        !confirm(
+          `⚠️ 이 카테고리에 ${category.postCount}개의 게시글이 있습니다.\n정말 삭제하시겠습니까?\n\n게시글도 함께 삭제될 수 있습니다.`
+        )
+      ) {
+        return;
+      }
+    } else {
+      if (!confirm("이 카테고리를 삭제할까요?")) return;
+    }
+
     await deleteCategory(id);
     await load();
   };

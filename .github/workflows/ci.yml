@@ -3,7 +3,7 @@ name: CI/CD
 on:
   push:
     branches: ["main", "master"]
-  workflow_dispatch:  # 수동 실행 가능
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,135 +12,90 @@ permissions:
 env:
   BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend:latest
   FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend:latest
-  DB_HOST: "172.30.1.85"
+  NAMESPACE: default
 
 jobs:
-  build-backend:
+  # GitHub 클라우드에서 빌드
+  build:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+      
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
           cache: maven
-
-      - name: Maven package
+      
+      - name: Maven Build
         working-directory: backend
         run: mvn -B -DskipTests clean package
-
+      
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      
+      - name: Build and Push Backend
+        run: |
+          docker build -f Dockerfile.backend -t ${{ env.BACKEND_IMAGE }} .
+          docker push ${{ env.BACKEND_IMAGE }}
+      
+      - name: Build and Push Frontend
+        run: |
+          docker build -f Dockerfile.frontend -t ${{ env.FRONTEND_IMAGE }} .
+          docker push ${{ env.FRONTEND_IMAGE }}
 
-      - name: Docker build backend
-        run: docker build -t "${{ env.BACKEND_IMAGE }}" -f Dockerfile.backend .
-
-      - name: Docker push backend
-        run: docker push "${{ env.BACKEND_IMAGE }}"
-
-  build-frontend:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: next-seo/package-lock.json
-
-      - name: Login to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Docker build frontend
-        run: docker build -t "${{ env.FRONTEND_IMAGE }}" -f Dockerfile.frontend .
-
-      - name: Docker push frontend
-        run: docker push "${{ env.FRONTEND_IMAGE }}"
-
+  # Self-hosted runner에서 배포 (이미지 pull + kubectl)
   deploy:
-    needs: [build-backend, build-frontend]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-
+    needs: build
+    runs-on: self-hosted
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup SSH
+      
+      - name: Create GHCR Pull Secret
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.K3S_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.K3S_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Deploy to K3s
-        env:
-          K3S_HOST: ${{ secrets.K3S_HOST }}
-          K3S_USER: ${{ secrets.K3S_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BACKEND_IMAGE: ${{ env.BACKEND_IMAGE }}
-          FRONTEND_IMAGE: ${{ env.FRONTEND_IMAGE }}
-          NAMESPACE: default
+          kubectl delete secret ghcr-secret -n ${{ env.NAMESPACE }} --ignore-not-found
+          kubectl create secret docker-registry ghcr-secret -n ${{ env.NAMESPACE }} \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-email=${{ github.actor }}@users.noreply.github.com
+      
+      - name: Update DB Secret
         run: |
-          # K3s 서버에 배포 스크립트 전송
-          scp -r k8s ${K3S_USER}@${K3S_HOST}:~/blog-deploy/
-
-          # K3s 서버에서 배포 실행
-          ssh ${K3S_USER}@${K3S_HOST} bash << EOF
-            set -e
-            cd ~/blog-deploy/k8s
-
-            echo "🔐 Creating GHCR pull secret..."
-            kubectl delete secret ghcr-secret -n ${NAMESPACE} --ignore-not-found
-            kubectl create secret docker-registry ghcr-secret -n ${NAMESPACE} \
-              --docker-server=ghcr.io \
-              --docker-username=${GITHUB_ACTOR} \
-              --docker-password=${GITHUB_TOKEN} \
-              --docker-email=${GITHUB_ACTOR}@users.noreply.github.com
-
-            echo "🔐 Updating DB secrets..."
-            kubectl delete secret blog-db-secret -n ${NAMESPACE} --ignore-not-found
-            kubectl create secret generic blog-db-secret -n ${NAMESPACE} \
-              --from-literal=DB_USER=blog_user \
-              --from-literal=DB_PASSWORD="${DB_PASSWORD}"
-
-            echo "📝 Applying ConfigMap..."
-            kubectl apply -f database-config.yaml -n ${NAMESPACE}
-
-            echo "🚀 Deploying backend..."
-            kubectl apply -f backend-deployment.yaml -n ${NAMESPACE}
-            kubectl set image deployment/blog-backend \
-              backend=${BACKEND_IMAGE} -n ${NAMESPACE}
-
-            echo "🚀 Deploying frontend..."
-            kubectl apply -f frontend-deployment.yaml -n ${NAMESPACE}
-            kubectl set image deployment/blog-frontend \
-              frontend=${FRONTEND_IMAGE} -n ${NAMESPACE}
-
-            echo "⏳ Waiting for rollout..."
-            kubectl rollout status deployment/blog-backend -n ${NAMESPACE} --timeout=300s
-            kubectl rollout status deployment/blog-frontend -n ${NAMESPACE} --timeout=300s
-
-            echo "✅ Deployment completed!"
-            kubectl get pods -n ${NAMESPACE}
-          EOF
-
-      - name: Deployment Status
+          kubectl delete secret blog-db-secret -n ${{ env.NAMESPACE }} --ignore-not-found
+          kubectl create secret generic blog-db-secret -n ${{ env.NAMESPACE }} \
+            --from-literal=DB_USER=csr \
+            --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+      
+      - name: Apply ConfigMap
+        run: kubectl apply -f k8s/database-config.yaml -n ${{ env.NAMESPACE }}
+      
+      - name: Deploy Backend
+        run: |
+          kubectl apply -f k8s/backend-deployment.yaml -n ${{ env.NAMESPACE }}
+          kubectl set image deployment/blog-backend \
+            backend=${{ env.BACKEND_IMAGE }} -n ${{ env.NAMESPACE }}
+      
+      - name: Deploy Frontend
+        run: |
+          kubectl apply -f k8s/frontend-deployment.yaml -n ${{ env.NAMESPACE }}
+          kubectl set image deployment/blog-frontend \
+            frontend=${{ env.FRONTEND_IMAGE }} -n ${{ env.NAMESPACE }}
+      
+      - name: Wait for Rollout
+        run: |
+          kubectl rollout status deployment/blog-backend -n ${{ env.NAMESPACE }} --timeout=300s
+          kubectl rollout status deployment/blog-frontend -n ${{ env.NAMESPACE }} --timeout=300s
+      
+      - name: Show Status
         if: always()
         run: |
-          echo "### Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend Image: ${{ env.BACKEND_IMAGE }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Frontend Image: ${{ env.FRONTEND_IMAGE }}" >> $GITHUB_STEP_SUMMARY
-          echo "- K3s Host: ${{ secrets.K3S_HOST }}" >> $GITHUB_STEP_SUMMARY
-          echo "- DB Host: ${{ env.DB_HOST }}" >> $GITHUB_STEP_SUMMARY
+          echo "=== Pods ==="
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          echo "=== Services ==="
+          kubectl get svc -n ${{ env.NAMESPACE }}

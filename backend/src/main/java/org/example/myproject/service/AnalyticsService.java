@@ -31,19 +31,21 @@ public class AnalyticsService {
         String fp = req.getHeader("X-Visitor-FP"); // 프론트가 주는 지문 해시(없어도 ok)
         if (fp==null || fp.isBlank()) fp = "FP-" + sha(ip + "|" + ua);
 
-        try {
+        // 중복 체크 후 새로운 방문자일 때만 저장 및 카운트 증가
+        boolean isNewVisitor = seenRepo.findByVisitDateAndFpHash(today, fp).isEmpty();
+        if (isNewVisitor) {
             seenRepo.save(VisitSeen.builder()
                     .visitDate(today).fpHash(fp)
                     .ipHash(sha(ip)).uaHash(sha(ua))
                     .build());
-        } catch (DataIntegrityViolationException ignore) {
-            // 중복 삽입은 무시하고 카운트는 진행
+            
+            var daily = dailyRepo.findByDate(today)
+                    .orElseGet(() -> dailyRepo.save(VisitDailyCount.builder().date(today).count(0L).build()));
+            daily.increase(1);
         }
-        var daily = dailyRepo.findByDate(today)
-                .orElseGet(() -> dailyRepo.save(VisitDailyCount.builder().date(today).count(0L).build()));
-        daily.increase(1);
 
-        long dailyCount = daily.getCount() == null ? 0 : daily.getCount();
+        // 현재 카운트 반환 (증가 여부와 관계없이)
+        long dailyCount = dailyRepo.findByDate(today).map(v -> v.getCount() == null ? 0 : v.getCount()).orElse(0L);
         long total = dailyRepo.findAll().stream().mapToLong(v-> v.getCount()==null?0:v.getCount()).sum();
         return new VisitSummary(dailyCount, total);
     }

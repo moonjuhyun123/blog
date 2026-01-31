@@ -1,10 +1,31 @@
-# Kubernetes Deployment Guide
+# Kubernetes 배포 가이드
 
-이 프로젝트는 Spring Boot 백엔드와 Next.js 프론트엔드를 별도의 Pod로 배포합니다.
+## 🚀 CI/CD 자동 배포 (추천)
 
-## 배포 환경 선택
+**GitHub Actions Hybrid 방식**을 사용합니다:
+- 빌드는 GitHub 클라우드에서 (빠름)
+- 배포는 K3s 서버에서 (이미지만 pull)
 
-- **k3s 사용자**: [README-k3s.md](./README-k3s.md) 참고 (추천)
+👉 **[빠른 시작 가이드](../CICD-QUICKSTART.md)** (3분 설정)
+
+---
+
+## 📚 문서 가이드
+
+| 문서 | 설명 |
+|------|------|
+| [CICD-QUICKSTART.md](../CICD-QUICKSTART.md) | **CI/CD 빠른 시작** (3분) |
+| [HYBRID-APPROACH.md](HYBRID-APPROACH.md) | Hybrid 방식 상세 설명 |
+| [DEPLOY-GUIDE.md](DEPLOY-GUIDE.md) | 수동 배포 가이드 |
+| [QUICK-REFERENCE.md](QUICK-REFERENCE.md) | 자주 쓰는 명령어 |
+| [README-k3s.md](README-k3s.md) | K3s 상세 가이드 |
+| [QUICKSTART-HOST-DB.md](QUICKSTART-HOST-DB.md) | 호스트 DB 빠른 설정 |
+
+---
+
+## 배포 환경
+
+- **K3s 추천**: [README-k3s.md](./README-k3s.md) 참고
 - **일반 Kubernetes**: 아래 가이드 참고
 
 ## 사전 준비

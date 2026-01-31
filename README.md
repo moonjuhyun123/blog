@@ -58,21 +58,27 @@ npm run dev
 
 ### 🚀 CI/CD (GitHub Actions) - 추천
 
-**자동 배포**: 코드를 푸시하면 자동으로 K3s에 배포됩니다.
+**Hybrid 방식**: Docker Compose처럼 이미지만 가져와서 배포
 
-📚 **빠른 시작**: [CICD-QUICKSTART.md](CICD-QUICKSTART.md) (5분 설정)
+- ⚡ 빌드는 GitHub 클라우드에서 (고성능 서버)
+- 💾 배포는 K3s 서버에서 (이미지만 pull)
+- 🔒 내부망 지원 (172.30.1.X)
 
-상세 가이드:
-- [GitHub Actions 설정](k8s/GITHUB-ACTIONS-SETUP.md)
-- [배포 가이드](k8s/DEPLOY-GUIDE.md)
-- [빠른 참조](k8s/QUICK-REFERENCE.md)
+📚 **빠른 시작**: [CICD-QUICKSTART.md](CICD-QUICKSTART.md) (3분 설정)
 
 ```bash
-# 1. GitHub Secrets 설정 (K3S_HOST, K3S_USER, K3S_SSH_KEY, DB_PASSWORD)
-# 2. 코드 푸시
+# 1. K3s 서버에 Self-hosted Runner 설치 (한 번만)
+# 2. GitHub Secret 1개 설정 (DB_PASSWORD)
+# 3. 코드 푸시
 git push origin main
-# 3. 자동 배포 완료! ✅
+# 4. 자동 배포 완료! ✅
 ```
+
+상세 가이드:
+- 🔥 [빠른 시작](CICD-QUICKSTART.md)
+- 📖 [Hybrid 방식 상세](k8s/HYBRID-APPROACH.md)
+- 📚 [배포 가이드](k8s/DEPLOY-GUIDE.md)
+- 📝 [빠른 참조](k8s/QUICK-REFERENCE.md)
 
 ### 🐳 Docker로 수동 빌드
 
@@ -92,7 +98,7 @@ docker build -f Dockerfile.frontend -t blog-frontend .
 
 ```bash
 cd k8s
-./quick-deploy.sh  # 또는 수동으로: kubectl apply -f .
+kubectl apply -f .
 ```
 
 ## API 문서
