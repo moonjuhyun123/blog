@@ -39,12 +39,12 @@ jobs:
       
       - name: Build and Push Backend
         run: |
-          docker build -f Dockerfile.backend -t ${{ env.BACKEND_IMAGE }} .
+          docker build --no-cache -f Dockerfile.backend -t ${{ env.BACKEND_IMAGE }} .
           docker push ${{ env.BACKEND_IMAGE }}
       
       - name: Build and Push Frontend
         run: |
-          docker build -f Dockerfile.frontend \
+          docker build --no-cache -f Dockerfile.frontend \
             --build-arg NEXT_PUBLIC_API_URL="" \
             -t ${{ env.FRONTEND_IMAGE }} .
           docker push ${{ env.FRONTEND_IMAGE }}
