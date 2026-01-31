@@ -87,27 +87,104 @@ spec:
       - name: ghcr-secret
 ```
 
-### 2. 환경 변수 설정
+### 2. 데이터베이스 설정
 
-#### Backend ConfigMap (선택)
+> **호스트 서버에 DB가 설치된 경우**: [HOST-DB-SETUP.md](./HOST-DB-SETUP.md) 참고
+
+#### 옵션 1: YAML 파일로 설정 (권장)
 
 ```bash
-kubectl create configmap backend-config \
-  --from-literal=SPRING_PROFILES_ACTIVE=prod \
-  --from-literal=JWT_SECRET=your-secret-key \
+# database-config.yaml 파일 수정
+vi database-config.yaml
+
+# 호스트 DB 사용 시:
+# DB_HOST: "host.k3s.internal"  (k3s 특화)
+# 또는
+# DB_HOST: "192.168.1.100"      (호스트 IP)
+
+# DB 포트, 이름, 사용자, 비밀번호 수정 후 적용
+kubectl apply -f database-config.yaml -n default
+```
+
+#### 옵션 2: 커맨드라인으로 설정
+
+```bash
+# ConfigMap 생성 (비민감 정보)
+kubectl create configmap blog-db-config \
+  --from-literal=DB_HOST=your-db-host.example.com \
+  --from-literal=DB_PORT=3306 \
+  --from-literal=DB_NAME=blog \
+  -n default
+
+# Secret 생성 (민감 정보)
+kubectl create secret generic blog-db-secret \
+  --from-literal=DB_USER=blog_user \
+  --from-literal=DB_PASSWORD=your-secure-password \
   -n default
 ```
 
-#### 데이터베이스 Secret (필요시)
+#### 옵션 3: .env 파일에서 생성
 
 ```bash
-kubectl create secret generic db-credentials \
-  --from-literal=MARIADB_HOST=your-db-host \
-  --from-literal=MARIADB_DATABASE=blog \
-  --from-literal=MARIADB_USER=blog_user \
-  --from-literal=MARIADB_PASSWORD=your-password \
+# .env 파일 생성
+cat > db.env <<EOF
+DB_HOST=your-db-host.example.com
+DB_PORT=3306
+DB_NAME=blog
+DB_USER=blog_user
+DB_PASSWORD=your-secure-password
+EOF
+
+# ConfigMap과 Secret 생성
+kubectl create configmap blog-db-config \
+  --from-env-file=db.env \
   -n default
+
+kubectl create secret generic blog-db-secret \
+  --from-env-file=db.env \
+  -n default
+
+# .env 파일 삭제 (보안)
+rm db.env
 ```
+
+#### 데이터베이스 초기화
+
+```bash
+# 호스트 서버에서 실행
+sudo mysql -u root -p
+
+# MariaDB/MySQL에서 실행
+CREATE DATABASE IF NOT EXISTS blog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'blog_user'@'%' IDENTIFIED BY 'your-secure-password';
+GRANT ALL PRIVILEGES ON blog.* TO 'blog_user'@'%';
+FLUSH PRIVILEGES;
+
+# 또는 제공된 스크립트 사용
+sudo mysql -u root -p < db-init.sql
+```
+
+#### 호스트 DB 설정 (중요!)
+
+호스트 서버의 MariaDB를 k3s pod에서 접근하려면:
+
+```bash
+# 1. MariaDB 외부 접근 허용
+sudo vi /etc/mysql/mariadb.conf.d/50-server.cnf
+# bind-address = 0.0.0.0 으로 변경
+
+sudo systemctl restart mariadb
+
+# 2. 방화벽 설정 (k3s pod network만 허용)
+sudo ufw allow from 10.42.0.0/16 to any port 3306
+
+# 3. 연결 테스트
+# Pod에서 테스트
+kubectl run -it --rm debug --image=mariadb:10 --restart=Never -- \
+  mysql -h host.k3s.internal -u blog_user -p blog
+```
+
+자세한 내용은 [HOST-DB-SETUP.md](./HOST-DB-SETUP.md)를 참고하세요.
 
 ### 3. 매니페스트 수정
 

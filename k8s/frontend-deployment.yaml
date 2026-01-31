@@ -5,7 +5,7 @@ metadata:
   labels:
     app: blog-frontend
 spec:
-  replicas: 2
+  replicas: 1  # 8GB RAM 제약으로 1개로 제한
   selector:
     matchLabels:
       app: blog-frontend
@@ -14,12 +14,12 @@ spec:
       labels:
         app: blog-frontend
     spec:
-      # GitHub Container Registry 인증 (필요시 주석 해제)
-      # imagePullSecrets:
-      # - name: ghcr-secret
+      # GitHub Container Registry 인증
+      imagePullSecrets:
+      - name: ghcr-secret
       containers:
       - name: frontend
-        image: ghcr.io/OWNER/REPO/frontend:latest
+        image: ghcr.io/OWNER/REPO/frontend:latest  # GitHub Actions에서 자동으로 업데이트됨
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

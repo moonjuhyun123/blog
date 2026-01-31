@@ -29,6 +29,35 @@ else
     echo "✓ Namespace already exists: $NAMESPACE"
 fi
 
+# 데이터베이스 설정 확인
+echo
+echo "💾 Checking database configuration..."
+if kubectl get configmap blog-db-config -n "$NAMESPACE" &> /dev/null; then
+    echo "✓ Database ConfigMap found"
+else
+    echo "⚠️  Database ConfigMap not found"
+    echo "   Please create it first:"
+    echo "   kubectl apply -f database-config.yaml -n $NAMESPACE"
+    read -p "Continue anyway? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+if kubectl get secret blog-db-secret -n "$NAMESPACE" &> /dev/null; then
+    echo "✓ Database Secret found"
+else
+    echo "⚠️  Database Secret not found"
+    echo "   Please create it first:"
+    echo "   kubectl apply -f database-config.yaml -n $NAMESPACE"
+    read -p "Continue anyway? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
 # 백엔드 배포
 echo
 echo "🚀 Deploying backend..."

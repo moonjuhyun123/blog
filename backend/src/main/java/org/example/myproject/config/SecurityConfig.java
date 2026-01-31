@@ -38,7 +38,8 @@ public class SecurityConfig {
                     return cfg;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html","/h2-console/**","/uploads/**",    // ✅ 추가: React 정적 리소스
+                        .requestMatchers("/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html","/h2-console/**","/uploads/**",
+                                "/actuator/health","/actuator/info","/actuator/metrics","/actuator/prometheus",  // Actuator
                                 "/",                 // index.html
                                 "/index.html",
                                 "/assets/**",        // Vite 빌드 파일(js, css 등)

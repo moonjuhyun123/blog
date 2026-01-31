@@ -5,7 +5,7 @@ metadata:
   labels:
     app: blog-backend
 spec:
-  replicas: 2
+  replicas: 1  # 8GB RAM 제약으로 1개로 제한
   selector:
     matchLabels:
       app: blog-backend
@@ -14,12 +14,12 @@ spec:
       labels:
         app: blog-backend
     spec:
-      # GitHub Container Registry 인증 (필요시 주석 해제)
-      # imagePullSecrets:
-      # - name: ghcr-secret
+      # GitHub Container Registry 인증
+      imagePullSecrets:
+      - name: ghcr-secret
       containers:
       - name: backend
-        image: ghcr.io/OWNER/REPO/backend:latest
+        image: ghcr.io/OWNER/REPO/backend:latest  # GitHub Actions에서 자동으로 업데이트됨
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -27,6 +27,33 @@ spec:
         env:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
+        # 데이터베이스 연결 정보 (ConfigMap)
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: blog-db-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: blog-db-config
+              key: DB_PORT
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: blog-db-config
+              key: DB_NAME
+        # 데이터베이스 인증 정보 (Secret)
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: blog-db-secret
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: blog-db-secret
+              key: DB_PASSWORD
         resources:
           requests:
             memory: "512Mi"

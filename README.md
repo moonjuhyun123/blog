@@ -56,7 +56,25 @@ npm run dev
 
 ## 배포
 
-### Docker로 빌드
+### 🚀 CI/CD (GitHub Actions) - 추천
+
+**자동 배포**: 코드를 푸시하면 자동으로 K3s에 배포됩니다.
+
+📚 **빠른 시작**: [CICD-QUICKSTART.md](CICD-QUICKSTART.md) (5분 설정)
+
+상세 가이드:
+- [GitHub Actions 설정](k8s/GITHUB-ACTIONS-SETUP.md)
+- [배포 가이드](k8s/DEPLOY-GUIDE.md)
+- [빠른 참조](k8s/QUICK-REFERENCE.md)
+
+```bash
+# 1. GitHub Secrets 설정 (K3S_HOST, K3S_USER, K3S_SSH_KEY, DB_PASSWORD)
+# 2. 코드 푸시
+git push origin main
+# 3. 자동 배포 완료! ✅
+```
+
+### 🐳 Docker로 수동 빌드
 
 ```bash
 # 백엔드
@@ -68,21 +86,14 @@ docker build -f Dockerfile.backend -t blog-backend .
 docker build -f Dockerfile.frontend -t blog-frontend .
 ```
 
-### Kubernetes 배포
+### ☸️ Kubernetes 수동 배포
 
 자세한 내용은 [k8s/README.md](k8s/README.md)를 참고하세요.
 
 ```bash
-kubectl apply -f k8s/
+cd k8s
+./quick-deploy.sh  # 또는 수동으로: kubectl apply -f .
 ```
-
-## CI/CD
-
-GitHub Actions를 사용하여 자동 빌드 및 배포:
-
-- `main` 브랜치에 push 시 자동 실행
-- Docker 이미지 빌드 및 GitHub Container Registry에 푸시
-- 백엔드와 프론트엔드 별도 빌드
 
 ## API 문서
 
