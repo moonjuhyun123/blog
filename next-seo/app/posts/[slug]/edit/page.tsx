@@ -61,7 +61,7 @@ export default function PostEditPage() {
         bulletList: { keepMarks: true, keepAttributes: true },
         orderedList: { keepMarks: true, keepAttributes: true },
       }),
-      Heading.configure({ levels: [2], keepMarks: true }),
+      Heading.configure({ levels: [2] }),
       ListItem.configure({
         content: "(paragraph | heading) block*",
         keepMarks: true,

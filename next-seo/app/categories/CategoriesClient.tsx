@@ -10,16 +10,7 @@ import {
   reorderCategories,
   updateCategory,
 } from "../../lib/api";
-import type { User } from "../../lib/types";
-
-type CategorySummary = {
-  id: number;
-  name: string;
-  slug: string;
-  createdAt: string;
-  sortOrder?: number | null;
-  postCount: number;
-};
+import type { CategorySummary, User } from "../../lib/types";
 
 export default function CategoriesClient({
   initialCategories,
