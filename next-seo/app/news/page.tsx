@@ -4,6 +4,8 @@ import type { NewsBriefing } from "../../lib/types";
 
 const siteUrl = process.env.SITE_URL?.replace(/\/+$/, "") ?? "http://localhost:3000";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "NEWS",
   description: "보안 브리핑과 최신 보안 뉴스를 모아봅니다.",

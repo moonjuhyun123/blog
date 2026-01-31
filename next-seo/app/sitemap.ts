@@ -17,11 +17,9 @@ type NewsBriefingSummary = {
   briefingDate: string;
 };
 
-function getApiBaseUrl() {
+function getApiBaseUrl(): string | null {
   const baseUrl = process.env.API_BASE_URL;
-  if (!baseUrl) {
-    throw new Error("API_BASE_URL is not set in next-seo/.env.local");
-  }
+  if (!baseUrl) return null;
   return baseUrl.replace(/\/+$/, "");
 }
 
@@ -31,6 +29,7 @@ function getSiteUrl() {
 
 async function fetchPostsForSitemap(): Promise<PostSummary[]> {
   const baseUrl = getApiBaseUrl();
+  if (!baseUrl) return [];
   const params = new URLSearchParams({
     page: "0",
     size: "1000",
@@ -63,6 +62,7 @@ async function fetchCategoriesForSitemap(): Promise<CategorySummary[]> {
 
 async function fetchNewsForSitemap(): Promise<NewsBriefingSummary[]> {
   const baseUrl = getApiBaseUrl();
+  if (!baseUrl) return [];
   const res = await fetch(`${baseUrl}/api/news`, {
     next: { revalidate: 600 },
   });

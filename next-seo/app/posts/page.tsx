@@ -4,6 +4,8 @@ import type { PageResponse, PostSummary } from "../../lib/types";
 
 const siteUrl = process.env.SITE_URL?.replace(/\/+$/, "") ?? "http://localhost:3000";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "FEED",
   description: "최신 게시글을 모아봅니다.",

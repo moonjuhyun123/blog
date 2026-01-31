@@ -37,6 +37,8 @@ async function fetchPinnedPost(): Promise<PinnedPost | null> {
 
 const siteUrl = process.env.SITE_URL?.replace(/\/+$/, "") ?? "http://localhost:3000";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "IT MOON",
   description: "보안과 개발 이야기를 담는 블로그",

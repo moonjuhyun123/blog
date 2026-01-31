@@ -25,6 +25,8 @@ function getSiteUrl() {
   return process.env.SITE_URL?.replace(/\/+$/, "") ?? "http://localhost:3000";
 }
 
+export const dynamic = "force-dynamic";
+
 function stripHtml(input: string) {
   return input.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }

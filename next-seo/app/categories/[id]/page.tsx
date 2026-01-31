@@ -19,6 +19,8 @@ function getSiteUrl() {
   return process.env.SITE_URL?.replace(/\/+$/, "") ?? "http://localhost:3000";
 }
 
+export const dynamic = "force-dynamic";
+
 async function fetchCategoryName(id: string): Promise<string | null> {
   const baseUrl = getApiBaseUrl();
   try {
