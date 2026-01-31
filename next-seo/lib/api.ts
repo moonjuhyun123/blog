@@ -1,5 +1,6 @@
 import type {
   Category,
+  CategorySummary,
   Comment,
   IdOnly,
   LikeToggleResponse,
@@ -157,16 +158,7 @@ export const listCategories = () =>
   fetchJson<Category[]>("/api/categories");
 
 export const listCategorySummary = () =>
-  fetchJson<
-    {
-      id: number;
-      name: string;
-      slug: string;
-      createdAt: string;
-      sortOrder?: number | null;
-      postCount: number;
-    }[]
-  >("/api/categories/summary?includePrivate=false");
+  fetchJson<CategorySummary[]>("/api/categories/summary?includePrivate=false");
 
 export const createCategory = (name: string) =>
   fetchJson<IdOnly>("/api/categories", {
