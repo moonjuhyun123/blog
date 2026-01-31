@@ -1,6 +1,10 @@
 spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:backend/.env[.properties]
   application:
     name: blog
+  profiles:
+    default: dev
 
   jpa:
     hibernate:
@@ -29,7 +33,7 @@ security:
     access-valid-seconds: 1800
     refresh-valid-seconds: 1209600
     cookie:
-      domain: ITMOON.site
+      domain: ""
       secure: false
       same-site: Lax
     secret-base64: Rm9vQmFyS2V5X0Rldl9PTkxZX0RvX05PVF9VU0VfVGhpc19pcy1Kb3N0X2FuX2V4YW1wbGVfc2VjcmV0XzEyMzQ1Njc4OTA=
@@ -48,6 +52,20 @@ server:
 
 gemini:
   api-key: ${GEMINI_API_KEY:}
+
+# Actuator 설정 (Health Check & Monitoring)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 # ==================================================
 # ================= DEV (H2) =======================
@@ -68,6 +86,8 @@ spring:
     console:
       enabled: true
       path: /h2-console
+      settings:
+        web-allow-others: true
 
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
@@ -79,6 +99,10 @@ server:
 app:
   upload-dir: ./uploads-dev
 
+security:
+  jwt:
+    cookie:
+      domain: ""
 
 # ==================================================
 # ================= PROD (MariaDB) =================
@@ -90,13 +114,45 @@ spring:
       on-profile: prod
 
   datasource:
-    url: jdbc:mariadb://localhost:3306/csr?useUnicode=true&characterEncoding=utf8mb4
-    username: csr
-    password: csrpass
+    url: jdbc:mariadb://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:csr}?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=UTC
+    username: ${DB_USER:csr}
+    password: ${DB_PASSWORD:csrpass}
     driver-class-name: org.mariadb.jdbc.Driver
+    
+    # HikariCP 커넥션 풀 설정
+    hikari:
+      # 최소 유휴 커넥션 수
+      minimum-idle: 5
+      # 최대 커넥션 풀 크기
+      maximum-pool-size: 20
+      # 커넥션 풀 이름
+      pool-name: BlogHikariPool
+      # 커넥션 타임아웃 (밀리초, 30초)
+      connection-timeout: 30000
+      # 유휴 커넥션 타임아웃 (밀리초, 10분)
+      idle-timeout: 600000
+      # 커넥션 최대 생명주기 (밀리초, 30분)
+      max-lifetime: 1800000
+      # 커넥션 테스트 쿼리
+      connection-test-query: SELECT 1
+      # 누수 감지 임계값 (밀리초, 0=비활성화)
+      leak-detection-threshold: 60000
+      # 자동 커밋
+      auto-commit: true
 
   jpa:
     database-platform: org.hibernate.dialect.MariaDBDialect
+    # 프로덕션에서는 ddl-auto를 validate로 변경 권장
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        # 배치 크기 최적화
+        jdbc:
+          batch_size: 20
+        # 쿼리 로그는 프로덕션에서 비활성화
+        format_sql: false
+    show-sql: false
 
 server:
   port: 8080
@@ -104,6 +160,7 @@ server:
 security:
   jwt:
     cookie:
+      domain: ITMOON.site
       secure: true
 
 app:

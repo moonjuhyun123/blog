@@ -7,7 +7,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.myproject.dto.user.BlockToggleRequest;
 import org.example.myproject.dto.user.UserDto;
-import org.example.myproject.mapper.DtoMapper;
 import org.example.myproject.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -27,7 +26,7 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<UserDto> me(HttpServletRequest req) {
-        return ResponseEntity.ok(DtoMapper.toUserDto(users.requireUser(req)));
+        return ResponseEntity.ok(UserDto.from(users.requireUser(req)));
     }
 
     @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

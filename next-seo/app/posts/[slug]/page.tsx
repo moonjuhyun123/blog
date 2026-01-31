@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import PostInteractions from "../../components/PostInteractions";
 
 type PostDetail = {
   id: number;
@@ -12,7 +13,7 @@ type PostDetail = {
   updatedAt?: string | null;
 };
 
-const REVALIDATE_SECONDS = 300;
+const REVALIDATE_SECONDS = 0;
 
 function getApiBaseUrl() {
   const baseUrl = process.env.API_BASE_URL;
@@ -46,7 +47,7 @@ async function fetchPost(slug: string): Promise<PostDetail | null> {
   const baseUrl = getApiBaseUrl();
   try {
     const res = await fetch(`${baseUrl}/api/posts/${id}`, {
-      next: { revalidate: REVALIDATE_SECONDS },
+      cache: "no-store",
     });
 
     if (res.status === 404) return null;
@@ -58,8 +59,13 @@ async function fetchPost(slug: string): Promise<PostDetail | null> {
   }
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const post = await fetchPost(params.slug);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const post = await fetchPost(slug);
   if (!post) {
     return {
       title: "게시글을 찾을 수 없습니다",
@@ -69,16 +75,26 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   const description = buildDescription(post);
   const siteUrl = getSiteUrl();
-  const url = new URL(`/posts/${params.slug}`, siteUrl).toString();
+  const url = new URL(`/posts/${slug}`, siteUrl).toString();
 
   return {
     title: post.title,
     description,
+    alternates: { canonical: url },
     openGraph: {
       title: post.title,
       description,
       type: "article",
       url,
+      publishedTime: post.createdAt,
+      modifiedTime: post.updatedAt ?? post.createdAt,
+      images: [{ url: new URL("/shield.png", siteUrl).toString() }],
+    },
+    twitter: {
+      card: "summary",
+      title: post.title,
+      description,
+      images: [new URL("/shield.png", siteUrl).toString()],
     },
   };
 }
@@ -88,12 +104,13 @@ export const revalidate = REVALIDATE_SECONDS;
 export default async function PostDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const post = await fetchPost(params.slug);
+  const { slug } = await params;
+  const post = await fetchPost(slug);
   if (!post) {
     return (
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: "40px 20px" }}>
+      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
         <h1>게시글을 불러올 수 없습니다</h1>
         <p style={{ marginTop: 12, color: "#c67b00" }}>
           백엔드 서버 상태와 `API_BASE_URL`을 확인하세요.
@@ -103,7 +120,7 @@ export default async function PostDetailPage({
   }
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "40px 20px" }}>
+    <main style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
       <header style={{ marginBottom: 24 }}>
         <h1 style={{ marginBottom: 8 }}>{post.title}</h1>
         <div style={{ color: "#888", fontSize: 13 }}>
@@ -111,15 +128,42 @@ export default async function PostDetailPage({
           {new Date(post.createdAt).toLocaleString()} · ❤ {post.likeCount}
         </div>
       </header>
-      {post.contentHtml ? (
-        <article dangerouslySetInnerHTML={{ __html: post.contentHtml }} />
-      ) : post.contentMd ? (
-        <article>
-          <pre style={{ whiteSpace: "pre-wrap" }}>{post.contentMd}</pre>
-        </article>
-      ) : (
-        <p>(내용 없음)</p>
-      )}
+      <article className="post__content" style={{ position: "relative" }}>
+        {post.contentHtml || post.contentMd ? (
+          <div
+            dangerouslySetInnerHTML={{
+              __html: post.contentHtml || post.contentMd || "",
+            }}
+          />
+        ) : (
+          <p>(내용 없음)</p>
+        )}
+      </article>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            headline: post.title,
+            datePublished: post.createdAt,
+            dateModified: post.updatedAt ?? post.createdAt,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": new URL(`/posts/${post.id}`, getSiteUrl()).toString(),
+            },
+            author: {
+              "@type": "Organization",
+              name: "IT MOON",
+            },
+            publisher: {
+              "@type": "Organization",
+              name: "IT MOON",
+            },
+          }),
+        }}
+      />
+      <PostInteractions postId={post.id} initialLikeCount={post.likeCount} />
     </main>
   );
 }

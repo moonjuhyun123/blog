@@ -46,9 +46,12 @@ public class PostController {
             @PathVariable Long categoryId,
             @RequestParam(required=false) Integer page,
             @RequestParam(required=false) Integer size,
-            @RequestParam(required=false) String title
+            @RequestParam(required=false) String title,
+            @RequestParam(required=false, defaultValue = "false") Boolean includePrivate,
+            HttpServletRequest req
     ) {
-        return ResponseEntity.ok(posts.listByCategory(categoryId, page, size, title));
+        var current = users.currentUser(req);
+        return ResponseEntity.ok(posts.listByCategory(categoryId, page, size, title, includePrivate, current));
     }
 
 //    @PostMapping("/categories/{categoryId}/posts")
@@ -66,10 +69,24 @@ public class PostController {
         return ResponseEntity.ok(posts.get(id, current));
     }
 
+    @GetMapping("/posts/pinned")
+    public ResponseEntity<?> pinned(HttpServletRequest req) {
+        var current = users.currentUser(req);
+        var pinned = posts.getPinned(current);
+        if (pinned == null) return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(pinned);
+    }
+
     @PatchMapping(value = "/posts/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<IdOnly> update(@PathVariable Long id, HttpServletRequest req, @Valid @RequestBody PostUpdateRequest body) {
         var admin = users.requireUser(req);
         return ResponseEntity.ok(posts.update(id, body, admin));
+    }
+
+    @PatchMapping(value = "/posts/{id}/pin", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<IdOnly> pin(@PathVariable Long id, HttpServletRequest req, @Valid @RequestBody PostPinRequest body) {
+        var admin = users.requireUser(req);
+        return ResponseEntity.ok(posts.pin(id, body.pinned(), admin));
     }
 
     @DeleteMapping("/posts/{id}")

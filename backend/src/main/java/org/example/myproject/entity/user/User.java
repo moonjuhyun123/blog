@@ -53,6 +53,18 @@ public class User extends BaseTimeEntity {
         this.profileImageUrl = newUrl;
     }
 
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
+    public void promoteToAdmin() {
+        this.role = UserRole.ADMIN;
+    }
+
+    public void ensureActive() {
+        this.blocked = false;
+    }
+
     public void block() { this.blocked = true; }
     public void unblock() { this.blocked = false; }
 }

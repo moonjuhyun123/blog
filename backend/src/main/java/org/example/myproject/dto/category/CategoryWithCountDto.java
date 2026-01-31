@@ -7,5 +7,6 @@ public record CategoryWithCountDto(
         String name,
         String slug,
         LocalDateTime createdAt,
+        Integer sortOrder,
         long postCount
 ) {}

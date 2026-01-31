@@ -14,7 +14,6 @@ import org.example.myproject.dto.user.UserDto;
 import org.example.myproject.entity.user.User;
 import org.example.myproject.entity.user.UserRole;
 import org.example.myproject.exception.ApiException;
-import org.example.myproject.mapper.DtoMapper;
 import org.example.myproject.repository.user.UserRepository;
 import org.example.myproject.security.CookieUtil;
 import org.example.myproject.security.JwtProperties;
@@ -42,7 +41,7 @@ public class AuthService {
                 .role(UserRole.USER)
                 .blocked(false)
                 .build();
-        return DtoMapper.toUserDto(userRepo.save(u));
+        return UserDto.from(userRepo.save(u));
     }
 
     @Transactional(readOnly = true)
@@ -53,7 +52,7 @@ public class AuthService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Unauthorized");
 
         issueCookies(res, u);
-        return DtoMapper.toUserDto(u);
+        return UserDto.from(u);
     }
 
     public void issueCookies(HttpServletResponse res, User u) {
@@ -114,7 +113,7 @@ public class AuthService {
             issueCookies(res, u);
 
             // 4) 응답 DTO
-            return DtoMapper.toUserDto(u);
+            return UserDto.from(u);
 
         } catch (ApiException e) {
             throw e;

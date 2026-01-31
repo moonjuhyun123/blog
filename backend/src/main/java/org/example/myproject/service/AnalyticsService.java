@@ -12,6 +12,7 @@ import org.example.myproject.entity.visit.VisitSeen;
 import org.example.myproject.exception.ApiException;
 import org.example.myproject.repository.visit.VisitDailyCountRepository;
 import org.example.myproject.repository.visit.VisitSeenRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,24 +31,28 @@ public class AnalyticsService {
         String fp = req.getHeader("X-Visitor-FP"); // 프론트가 주는 지문 해시(없어도 ok)
         if (fp==null || fp.isBlank()) fp = "FP-" + sha(ip + "|" + ua);
 
-        // 중복 체크
-        if (seenRepo.findByVisitDateAndFpHash(today, fp).isEmpty()) {
+        // 중복 체크 후 새로운 방문자일 때만 저장 및 카운트 증가
+        boolean isNewVisitor = seenRepo.findByVisitDateAndFpHash(today, fp).isEmpty();
+        if (isNewVisitor) {
             seenRepo.save(VisitSeen.builder()
                     .visitDate(today).fpHash(fp)
                     .ipHash(sha(ip)).uaHash(sha(ua))
                     .build());
-            var daily = dailyRepo.findByDate(today).orElseGet(() -> dailyRepo.save(VisitDailyCount.builder().date(today).count(0L).build()));
+            
+            var daily = dailyRepo.findByDate(today)
+                    .orElseGet(() -> dailyRepo.save(VisitDailyCount.builder().date(today).count(0L).build()));
             daily.increase(1);
         }
 
-        long daily = seenRepo.countByVisitDate(today);
+        // 현재 카운트 반환 (증가 여부와 관계없이)
+        long dailyCount = dailyRepo.findByDate(today).map(v -> v.getCount() == null ? 0 : v.getCount()).orElse(0L);
         long total = dailyRepo.findAll().stream().mapToLong(v-> v.getCount()==null?0:v.getCount()).sum();
-        return new VisitSummary(daily, total);
+        return new VisitSummary(dailyCount, total);
     }
 
     public VisitSummary summary(jakarta.servlet.http.HttpServletRequest req) {
         LocalDate today = LocalDate.now();
-        long daily = seenRepo.countByVisitDate(today);
+        long daily = dailyRepo.findByDate(today).map(v -> v.getCount() == null ? 0 : v.getCount()).orElse(0L);
         long total = dailyRepo.findAll().stream().mapToLong(v-> v.getCount()==null?0:v.getCount()).sum();
         return new VisitSummary(daily, total);
     }

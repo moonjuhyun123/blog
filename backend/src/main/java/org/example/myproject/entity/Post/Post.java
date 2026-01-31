@@ -49,6 +49,9 @@ public class Post extends BaseTimeEntity {
     @Column(name = "is_private", nullable = false)
     private boolean isPrivate;
 
+    @Column(name = "is_pinned", nullable = false)
+    private boolean isPinned;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "author_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_post_author"))
@@ -75,6 +78,8 @@ public class Post extends BaseTimeEntity {
     }
 
     public void setPrivate(boolean flag) { this.isPrivate = flag; }
+
+    public void setPinned(boolean flag) { this.isPinned = flag; }
 
 
 }

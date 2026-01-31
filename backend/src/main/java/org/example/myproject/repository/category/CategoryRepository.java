@@ -11,17 +11,20 @@ import org.springframework.data.jpa.repository.Query;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findBySlug(String slug);
     boolean existsBySlug(String slug);
+    @Query("select max(c.sortOrder) from Category c")
+    Integer findMaxSortOrder();
+    List<Category> findAllByOrderBySortOrderAscCreatedAtAsc();
     @Query("""
     select new org.example.myproject.dto.category.CategoryWithCountDto(
-      c.id, c.name, c.slug, c.createdAt,
+      c.id, c.name, c.slug, c.createdAt, c.sortOrder,
       count(p.id)
     )
     from Category c
     left join Post p
       on p.category = c
       and (:includePrivate = true or p.isPrivate = false)
-    group by c.id, c.name, c.slug, c.createdAt
-    order by c.createdAt asc
+    group by c.id, c.name, c.slug, c.createdAt, c.sortOrder
+    order by coalesce(c.sortOrder, 1000000) asc, c.createdAt asc
   """)
     List<CategoryWithCountDto> findAllWithPostCount(boolean includePrivate);
 

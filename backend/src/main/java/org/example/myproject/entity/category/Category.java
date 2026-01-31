@@ -35,6 +35,9 @@ public class Category extends BaseTimeEntity {
     @Column(length = 120, nullable = false)
     private String slug;
 
+    @Column(name = "sort_order")
+    private Integer sortOrder;
+
     // ✅ 이 컬렉션에 cascade+orphanRemoval 설정 → 카테고리 삭제 시 하위 게시글도 함께 삭제
     @OneToMany(
             mappedBy = "category",
@@ -42,5 +45,9 @@ public class Category extends BaseTimeEntity {
             orphanRemoval = true
     )
     private List<Post> posts = new ArrayList<>();
+
+    public void updateSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
+    }
 }
 

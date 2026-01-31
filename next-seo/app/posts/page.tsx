@@ -1,22 +1,33 @@
-type PageResponse<T> = {
-  content: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-  error?: string;
+import type { Metadata } from "next";
+import PostsClient from "./PostsClient";
+import type { PageResponse, PostSummary } from "../../lib/types";
+
+const siteUrl = process.env.SITE_URL?.replace(/\/+$/, "") ?? "http://localhost:3000";
+
+export const metadata: Metadata = {
+  title: "FEED",
+  description: "최신 게시글을 모아봅니다.",
+  alternates: { canonical: `${siteUrl}/posts` },
+  openGraph: {
+    title: "FEED",
+    description: "최신 게시글을 모아봅니다.",
+    url: `${siteUrl}/posts`,
+    type: "website",
+    images: [{ url: `${siteUrl}/shield.png` }],
+  },
+  twitter: {
+    card: "summary",
+    title: "FEED",
+    description: "최신 게시글을 모아봅니다.",
+    images: [`${siteUrl}/shield.png`],
+  },
 };
 
-type PostSummary = {
-  id: number;
-  title: string;
-  category?: { id: number; name: string; slug: string } | null;
-  likeCount: number;
-  isPrivate: boolean;
-  createdAt: string;
+type SearchParams = {
+  page?: string | string[];
+  size?: string | string[];
+  title?: string | string[];
 };
-
-const REVALIDATE_SECONDS = 300;
 
 function getApiBaseUrl() {
   const baseUrl = process.env.API_BASE_URL;
@@ -26,70 +37,43 @@ function getApiBaseUrl() {
   return baseUrl.replace(/\/+$/, "");
 }
 
-async function fetchPosts(): Promise<PageResponse<PostSummary>> {
+function getFirst(value?: string | string[]) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+async function fetchPosts(sp: SearchParams): Promise<PageResponse<PostSummary> | null> {
   const baseUrl = getApiBaseUrl();
-  const params = new URLSearchParams({
-    page: "0",
-    size: "50",
-    includePrivate: "false",
-  });
+  const usp = new URLSearchParams();
+  const page = getFirst(sp.page);
+  const size = getFirst(sp.size);
+  const title = getFirst(sp.title);
+  if (page) usp.set("page", page);
+  if (size) usp.set("size", size);
+  if (title) usp.set("title", title);
+  const qs = usp.toString();
   try {
-    const res = await fetch(`${baseUrl}/api/posts?${params.toString()}`, {
-      next: { revalidate: REVALIDATE_SECONDS },
+    const res = await fetch(`${baseUrl}/api/posts${qs ? `?${qs}` : ""}`, {
+      cache: "no-store",
     });
-
-    if (!res.ok) {
-      return {
-        content: [],
-        page: 0,
-        size: 0,
-        totalElements: 0,
-        totalPages: 1,
-        error: `API error: ${res.status}`,
-      };
-    }
-
+    if (!res.ok) return null;
     return res.json();
-  } catch (err) {
-    return {
-      content: [],
-      page: 0,
-      size: 0,
-      totalElements: 0,
-      totalPages: 1,
-      error: "API connection failed",
-    };
+  } catch {
+    return null;
   }
 }
 
-export const revalidate = REVALIDATE_SECONDS;
+export default async function PostsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
+  const page = Number(getFirst(sp.page) ?? 0);
+  const size = Number(getFirst(sp.size) ?? 10);
+  const title = getFirst(sp.title) ?? "";
+  const initialQueryKey = JSON.stringify({ page, size, title });
+  const initialData = await fetchPosts(sp);
 
-export default async function PostsPage() {
-  const data = await fetchPosts();
-
-  return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "40px 20px" }}>
-      <h1>Posts</h1>
-      {data.error && (
-        <p style={{ marginTop: 12, color: "#c67b00" }}>
-          게시글 API에 연결할 수 없습니다. 백엔드 서버 상태와
-          `API_BASE_URL`을 확인하세요.
-        </p>
-      )}
-      <ul style={{ listStyle: "none", padding: 0, marginTop: 24 }}>
-        {data.content.map((post) => (
-          <li key={post.id} style={{ padding: "12px 0", borderBottom: "1px solid #222" }}>
-            <a href={`/posts/${post.id}`} style={{ fontSize: 20, fontWeight: 600 }}>
-              {post.title}
-            </a>
-            <div style={{ marginTop: 6, color: "#888", fontSize: 13 }}>
-              {post.category?.name ? `#${post.category.name}` : "#uncategorized"} ·{" "}
-              {new Date(post.createdAt).toLocaleString()} · ❤ {post.likeCount}
-              {post.isPrivate && <span style={{ marginLeft: 8 }}>(Private)</span>}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </main>
-  );
+  return <PostsClient initialData={initialData} initialQueryKey={initialQueryKey} />;
 }

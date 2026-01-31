@@ -1,61 +1,101 @@
-name: ci
+name: CI/CD
 
 on:
   push:
     branches: ["main", "master"]
+  workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
 
 env:
-  IMAGE: ghcr.io/${{ github.repository }}/game:latest
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend:latest
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend:latest
+  NAMESPACE: default
 
 jobs:
-  build-and-push:
+  # GitHub 클라우드에서 빌드
+  build:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Frontend build (Vite)
-        working-directory: frontend
-        run: |
-          #npm ci
-          npm i --legacy-peer-deps   # 우선 이대로 하고 나중에 수정
-          npm run build
-
-      - name: Copy dist to Spring static
-        run: |
-          rm -rf backend/src/main/resources/static/*
-          mkdir -p backend/src/main/resources/static
-          cp -r frontend/dist/* backend/src/main/resources/static/
-
+      
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
           cache: maven
-
-      - name: Maven package (backend)
+      
+      - name: Maven Build
         working-directory: backend
-        run: |
-          mvn -B -DskipTests clean package
-
+        run: mvn -B -DskipTests clean package
+      
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      
+      - name: Build and Push Backend
+        run: |
+          docker build -f Dockerfile.backend -t ${{ env.BACKEND_IMAGE }} .
+          docker push ${{ env.BACKEND_IMAGE }}
+      
+      - name: Build and Push Frontend
+        run: |
+          docker build -f Dockerfile.frontend -t ${{ env.FRONTEND_IMAGE }} .
+          docker push ${{ env.FRONTEND_IMAGE }}
 
-      - name: Docker build
-        run: docker build -t "${{ env.IMAGE }}" .
-
-      - name: Docker push
-        run: docker push "${{ env.IMAGE }}"
+  # Self-hosted runner에서 배포 (이미지 pull + kubectl)
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Create GHCR Pull Secret
+        run: |
+          kubectl delete secret ghcr-secret -n ${{ env.NAMESPACE }} --ignore-not-found
+          kubectl create secret docker-registry ghcr-secret -n ${{ env.NAMESPACE }} \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-email=${{ github.actor }}@users.noreply.github.com
+      
+      - name: Update DB Secret
+        run: |
+          kubectl delete secret blog-db-secret -n ${{ env.NAMESPACE }} --ignore-not-found
+          kubectl create secret generic blog-db-secret -n ${{ env.NAMESPACE }} \
+            --from-literal=DB_USER=csr \
+            --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+      
+      - name: Apply ConfigMap
+        run: kubectl apply -f k8s/database-config.yaml -n ${{ env.NAMESPACE }}
+      
+      - name: Deploy Backend
+        run: |
+          kubectl apply -f k8s/backend-deployment.yaml -n ${{ env.NAMESPACE }}
+          kubectl set image deployment/blog-backend \
+            backend=${{ env.BACKEND_IMAGE }} -n ${{ env.NAMESPACE }}
+      
+      - name: Deploy Frontend
+        run: |
+          kubectl apply -f k8s/frontend-deployment.yaml -n ${{ env.NAMESPACE }}
+          kubectl set image deployment/blog-frontend \
+            frontend=${{ env.FRONTEND_IMAGE }} -n ${{ env.NAMESPACE }}
+      
+      - name: Wait for Rollout
+        run: |
+          kubectl rollout status deployment/blog-backend -n ${{ env.NAMESPACE }} --timeout=300s
+          kubectl rollout status deployment/blog-frontend -n ${{ env.NAMESPACE }} --timeout=300s
+      
+      - name: Show Status
+        if: always()
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          echo "=== Services ==="
+          kubectl get svc -n ${{ env.NAMESPACE }}

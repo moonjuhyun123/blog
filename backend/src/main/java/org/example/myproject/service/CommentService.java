@@ -11,7 +11,6 @@ import org.example.myproject.entity.comment.Comment;
 import org.example.myproject.entity.user.User;
 import org.example.myproject.entity.user.UserRole;
 import org.example.myproject.exception.ApiException;
-import org.example.myproject.mapper.DtoMapper;
 import org.example.myproject.repository.comment.CommentRepository;
 import org.example.myproject.repository.post.PostRepository;
 import org.springframework.http.HttpStatus;
@@ -27,7 +26,7 @@ public class CommentService {
     public List<CommentDto> list(Long postId) {
         Post p = posts.findById(postId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Post Not Found"));
         return comments.findByPost(p, org.springframework.data.domain.Pageable.unpaged())
-                .stream().map(DtoMapper::toCommentDto).toList();
+                .stream().map(CommentDto::from).toList();
     }
 
     @Transactional

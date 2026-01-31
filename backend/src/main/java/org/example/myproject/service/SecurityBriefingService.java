@@ -384,7 +384,7 @@ public class SecurityBriefingService {
         sb.append("- 동의어로 바꾸기 금지.\n");
         sb.append("- 출력은 템플릿을 그대로 복사하고 { } 안의 값만 채운 HTML만 출력하라.\n\n");
 
-        sb.append("BEGIN_HTML_TEMPLATE\n");
+
         sb.append("<article>\n");
         sb.append("  <header>\n");
         sb.append("    <h1>오늘의 보안 브리핑 (Top 3 사건)</h1>\n");
@@ -472,10 +472,7 @@ public class SecurityBriefingService {
         sb.append("  </section>\n");
 
         sb.append("</article>\n");
-        sb.append("END_HTML_TEMPLATE\n\n");
 
-        sb.append("최종 출력 규칙: BEGIN_HTML_TEMPLATE와 END_HTML_TEMPLATE 사이의 HTML만 출력하라. 다른 텍스트는 절대 출력하지 마라.\n");
-        sb.append("이제 오늘 item만 근거로 위 템플릿의 { } 값만 채워서 출력하라.\n");
 
         return sb.toString();
     }
