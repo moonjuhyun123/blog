@@ -204,6 +204,41 @@ sudo ~/actions-runner/svc.sh status
 sudo ~/actions-runner/svc.sh restart
 ```
 
+### 문제: `kubeconfig: permission denied` / 디플로이가 안 됨
+
+**원인:** K3s가 만든 kubeconfig(`/etc/rancher/k3s/k3s.yaml`)는 기본적으로 root만 읽을 수 있어서, Runner 사용자(예: `runner`)가 `kubectl`을 실행할 때 권한 오류가 납니다.
+
+**해결 (K3s 서버에서 한 번만 설정):**
+
+Runner가 **어떤 사용자**로 돌아가는지 확인한 뒤, 그 사용자 홈에 kubeconfig를 복사합니다.
+
+```bash
+# K3s 서버 접속 후
+
+# 1) Runner 사용자 확인 (보통 runner 또는 서비스 계정 이름)
+sudo cat /etc/systemd/system/actions.runner.*.service | grep User=
+# 예: User=runner
+
+# 2) 해당 사용자 홈에 kubeconfig 복사 (User=runner 이면 runner 로 변경)
+RUNNER_USER=runner   # 위에서 확인한 사용자로 변경
+sudo mkdir -p /home/$RUNNER_USER/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml /home/moon/.kube/config
+sudo chown -R moon:moon /home/moon/.kube
+sudo chmod 600 /home/$RUNNER_USER/.kube/config
+
+# 3) kubectl이 이 파일을 쓰도록 확인 (Runner 사용자로 테스트)
+sudo -u $RUNNER_USER kubectl get nodes
+# NAME   STATUS   ROLES   ... 가 나오면 성공
+```
+
+**대안 (같은 서버에서만 쓸 때):** k3s 설정 파일만 읽기 허용
+
+```bash
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+```
+
+설정 후 **Actions에서 워크플로를 다시 실행**하면 디플로이가 진행됩니다.
+
 ### 문제: ImagePullBackOff
 
 ```bash
@@ -232,6 +267,37 @@ kubectl get configmap blog-db-config -o yaml
 # Secret 확인
 kubectl get secret blog-db-secret -o jsonpath='{.data.DB_PASSWORD}' | base64 -d
 ```
+
+### 문제: `timed out waiting for the condition` (Wait for Rollout 실패)
+
+**의미:** 300초 안에 Pod가 Ready가 안 돼서 실패한 것. **원인은 서버에서 확인해야 함.**
+
+**1) 타임아웃 설정 위치**  
+`.github/workflows/ci.yml` → `Wait for Rollout` 단계의 `--timeout=300s`. 필요하면 `600s` 등으로 늘릴 수 있음.
+
+**2) K3s 서버에서 원인 확인**
+
+```bash
+# 어떤 Pod가 문제인지 확인 (STATUS가 ImagePullBackOff, CrashLoopBackOff 등)
+kubectl get pods
+
+# 해당 Pod 상세 (이벤트, 상태 이유)
+kubectl describe pod <pod-name>
+
+# 해당 Pod 로그 (백엔드 DB 연결 오류 등)
+kubectl logs <pod-name>
+kubectl logs <pod-name> --previous   # 재시작 전 로그
+```
+
+**3) 자주 나오는 원인과 설정 위치**
+
+| 증상 | 원인 | 확인/설정 위치 |
+|------|------|----------------|
+| **ImagePullBackOff** | 이미지 못 받음 (이름/권한) | `ghcr-secret` 존재 여부, 이미지 주소가 `ghcr.io/본인계정/저장소/...` 인지 |
+| **CrashLoopBackOff** (백엔드) | DB 연결 실패 | DB 사용자/비밀번호: 워크플로가 `csr` + GitHub Secret `DB_PASSWORD` 로 Secret 생성. DB 서버에 `csr` 사용자와 이 비밀번호로 접속 가능해야 함. `k8s/database-config.yaml` 의 `DB_HOST` 가 4GB DB 서버 IP인지 확인 |
+| **Readiness 실패** | 앱이 300초 안에 준비 안 됨 | `k8s/backend-deployment.yaml` / `frontend-deployment.yaml` 의 `readinessProbe.initialDelaySeconds` 늘리거나, 위 로그로 앱 오류 해결 |
+
+워크플로는 **ConfigMap 적용 후 DB Secret을 덮어쓰도록** 순서가 바뀌어 있어서, GitHub Secret `DB_PASSWORD` 와 DB 사용자 `csr` 이 실제 DB와 일치하면 백엔드가 기동되어 Rollout이 통과할 가능성이 높음.
 
 ### 문제: 빌드는 성공, 배포 실패
 
