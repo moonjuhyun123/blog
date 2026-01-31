@@ -13,8 +13,6 @@ type PostDetail = {
   updatedAt?: string | null;
 };
 
-const REVALIDATE_SECONDS = 0;
-
 function getApiBaseUrl() {
   const baseUrl = process.env.API_BASE_URL;
   if (!baseUrl) {
@@ -99,7 +97,7 @@ export async function generateMetadata({
   };
 }
 
-export const revalidate = REVALIDATE_SECONDS;
+export const revalidate = 0;
 
 export default async function PostDetailPage({
   params,
