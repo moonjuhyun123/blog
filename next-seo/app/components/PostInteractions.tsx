@@ -202,12 +202,7 @@ export default function PostInteractions({
 
         <ul className="comment__list">
           {visibleComments.map((c) => {
-            const avatarUrl =
-              (c.author as any)?.avatarUrl ??
-              (c.author as any)?.imageUrl ??
-              (c.author as any)?.profileImageUrl ??
-              null;
-
+            const avatarUrl = c.author?.profileImageUrl ?? null;
             const displayName = c.author?.displayName ?? "user";
 
             return (

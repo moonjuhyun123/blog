@@ -46,17 +46,15 @@ export default function GoogleLoginButton({
       if (!inited.current) {
         window.google.accounts.id.initialize({
           client_id: clientId,
-          callback: async (resp: any) => {
+          callback: async (resp: { credential?: string }) => {
             try {
               const idToken = resp?.credential;
               if (!idToken) throw new Error("id_token 수신 실패");
               await googleLogin(idToken);
               window.location.replace("/");
-            } catch (e: any) {
-              errorRef.current?.(
-                e?.response?.data?.message ??
-                  "Google 인증 중 오류가 발생했습니다."
-              );
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : "Google 인증 중 오류가 발생했습니다.";
+              errorRef.current?.(message);
             }
           },
           ux_mode: "popup",

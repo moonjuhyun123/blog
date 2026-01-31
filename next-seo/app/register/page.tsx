@@ -35,11 +35,12 @@ export default function RegisterPage() {
     try {
       await register(displayName, email, password);
       router.push("/");
-    } catch (e: any) {
-      if (String(e?.message || "").includes("409")) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "회원가입 실패";
+      if (message.includes("409")) {
         setErr("이미 등록된 이메일입니다.");
       } else {
-        setErr(e?.message ?? "회원가입 실패");
+        setErr(message);
       }
     }
   };

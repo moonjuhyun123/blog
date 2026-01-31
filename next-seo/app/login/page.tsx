@@ -33,8 +33,9 @@ export default function LoginPage() {
     try {
       await login(email, password);
       router.push("/");
-    } catch (e: any) {
-      setErr(e?.message ?? "등록되지 않은 이메일이거나 비밀번호가 틀렸습니다.");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "등록되지 않은 이메일이거나 비밀번호가 틀렸습니다.";
+      setErr(message);
     }
   };
 
