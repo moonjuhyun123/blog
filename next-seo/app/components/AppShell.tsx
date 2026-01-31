@@ -8,11 +8,10 @@ import { analyticsVisit, me } from "../../lib/api";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const [ready, setReady] = useState(false);
   const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
-    analyticsVisit().finally(() => setReady(true));
+    analyticsVisit().catch(() => {}); // 비동기 백그라운드, 렌더 블로킹 안 함
   }, []);
 
   useEffect(() => {
@@ -39,8 +38,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       body.classList.remove("no-scroll", "is-home");
     };
   }, [isHome]);
-
-  if (!ready) return null;
 
   return (
     <div className="app">
