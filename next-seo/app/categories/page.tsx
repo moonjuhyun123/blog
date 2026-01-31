@@ -3,6 +3,8 @@ import CategoriesClient from "./CategoriesClient";
 
 const siteUrl = process.env.SITE_URL?.replace(/\/+$/, "") ?? "http://localhost:3000";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "CATEGORIES",
   description: "카테고리별로 게시글을 찾아봅니다.",
