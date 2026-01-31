@@ -6,7 +6,7 @@ metadata:
     app: blog-backend
 spec:
   replicas: 1  # 8GB RAM 제약으로 1개로 제한
-  progressDeadlineSeconds: 600   # 롤아웃 실패 전 대기 시간 (기본 600, 느린 기동 시 늘림)
+  progressDeadlineSeconds: 900   # 롤아웃 실패 전 대기 15분
   selector:
     matchLabels:
       app: blog-backend
@@ -55,19 +55,20 @@ spec:
             secretKeyRef:
               name: blog-db-secret
               key: DB_PASSWORD
+        # 8GB 서버: 백엔드에 여유 할당 (부팅·운영 안정)
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "3Gi"
+            cpu: "1000m"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "4Gi"
+            cpu: "2000m"
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 8080
           periodSeconds: 5
-          failureThreshold: 60   # 최대 5분 부팅 허용
+          failureThreshold: 120   # 최대 10분 부팅 허용 (120×5초)
         readinessProbe:
           httpGet:
             path: /actuator/health
