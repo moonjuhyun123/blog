@@ -3,7 +3,7 @@ kind: Ingress
 metadata:
   name: blog-ingress
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    # rewrite-target 없음: /api 그대로 백엔드로 전달 (백엔드가 /api/posts 등 사용)
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: nginx

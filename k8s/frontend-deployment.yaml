@@ -19,7 +19,8 @@ spec:
       - name: ghcr-secret
       containers:
       - name: frontend
-        image: ghcr.io/OWNER/REPO/frontend:latest  # GitHub Actions에서 자동으로 업데이트됨
+        # 배포 전 이미지 주소를 실제로 변경 (예: ghcr.io/moonjuhyun123/blog/frontend:latest)
+        image: ghcr.io/OWNER/REPO/frontend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
@@ -27,8 +28,15 @@ spec:
         env:
         - name: NODE_ENV
           value: "production"
+        # 브라우저용 API 주소: 같은 도메인 쓰면 빈 값(상대 경로 /api 사용). 빌드 시 이미 반영됨.
         - name: NEXT_PUBLIC_API_URL
+          value: ""
+        # 서버(SSR/사이트맵)용: 클러스터 내부 백엔드 주소
+        - name: API_BASE_URL
           value: "http://blog-backend:8080"
+        # 공개 URL (사이트맵, canonical, OGP). yourdomain.com 을 실제 도메인으로 변경
+        - name: SITE_URL
+          value: "https://yourdomain.com"
         resources:
           requests:
             memory: "256Mi"

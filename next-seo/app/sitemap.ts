@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 
+// Sitemap is generated at runtime so Docker/CI build does not need a running backend.
+export const dynamic = "force-dynamic";
+
 type PostSummary = {
   id: number;
   createdAt: string;
@@ -30,46 +33,50 @@ function getSiteUrl() {
 async function fetchPostsForSitemap(): Promise<PostSummary[]> {
   const baseUrl = getApiBaseUrl();
   if (!baseUrl) return [];
-  const params = new URLSearchParams({
-    page: "0",
-    size: "1000",
-    includePrivate: "false",
-  });
-
-  const res = await fetch(`${baseUrl}/api/posts?${params.toString()}`, {
-    next: { revalidate: 600 },
-  });
-
-  if (!res.ok) {
+  try {
+    const params = new URLSearchParams({
+      page: "0",
+      size: "1000",
+      includePrivate: "false",
+    });
+    const res = await fetch(`${baseUrl}/api/posts?${params.toString()}`, {
+      next: { revalidate: 600 },
+    });
+    if (!res.ok) return [];
+    const data: PageResponse<PostSummary> = await res.json();
+    return data.content ?? [];
+  } catch {
     return [];
   }
-
-  const data: PageResponse<PostSummary> = await res.json();
-  return data.content ?? [];
 }
 
 async function fetchCategoriesForSitemap(): Promise<CategorySummary[]> {
   const baseUrl = getApiBaseUrl();
-  const params = new URLSearchParams({ includePrivate: "false" });
-  const res = await fetch(`${baseUrl}/api/categories/summary?${params.toString()}`, {
-    next: { revalidate: 600 },
-  });
-  if (!res.ok) {
+  if (!baseUrl) return [];
+  try {
+    const params = new URLSearchParams({ includePrivate: "false" });
+    const res = await fetch(`${baseUrl}/api/categories/summary?${params.toString()}`, {
+      next: { revalidate: 600 },
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
     return [];
   }
-  return res.json();
 }
 
 async function fetchNewsForSitemap(): Promise<NewsBriefingSummary[]> {
   const baseUrl = getApiBaseUrl();
   if (!baseUrl) return [];
-  const res = await fetch(`${baseUrl}/api/news`, {
-    next: { revalidate: 600 },
-  });
-  if (!res.ok) {
+  try {
+    const res = await fetch(`${baseUrl}/api/news`, {
+      next: { revalidate: 600 },
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
     return [];
   }
-  return res.json();
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
