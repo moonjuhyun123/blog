@@ -8,7 +8,7 @@ data:
   DB_HOST: "172.30.1.85"
   
   DB_PORT: "3306"
-  DB_NAME: "blog"
+  DB_NAME: "csr"   # 실제 DB 이름 (blog → csr)
 ---
 # 데이터베이스 Secret (민감 정보)
 # 주의: DB_PASSWORD를 실제 비밀번호로 변경하세요!
