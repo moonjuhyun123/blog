@@ -154,6 +154,12 @@ spring:
         format_sql: false
     show-sql: false
 
+# prod: 풀 로그로 문제 추적용 (필요 없으면 DEBUG → INFO 로 낮추기)
+logging:
+  level:
+    com.zaxxer.hikari: DEBUG
+    com.zaxxer.hikari.pool.HikariPool: DEBUG
+
 server:
   port: 8080
 

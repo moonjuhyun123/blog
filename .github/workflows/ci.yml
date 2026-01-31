@@ -101,9 +101,32 @@ jobs:
             frontend=${{ env.FRONTEND_IMAGE }} -n ${{ env.NAMESPACE }}
       
       - name: Wait for Rollout
+        id: rollout
         run: |
           kubectl rollout status deployment/blog-backend -n ${{ env.NAMESPACE }} --timeout=600s
           kubectl rollout status deployment/blog-frontend -n ${{ env.NAMESPACE }} --timeout=300s
+      
+      # Rollout 실패 시 Pod 이벤트·로그를 Actions에 출력 (서버 접속 없이 원인 확인)
+      - name: Dump pod logs on Rollout failure
+        if: failure() && steps.rollout.outcome == 'failure'
+        run: |
+          echo "=== Pods (상태) ==="
+          kubectl get pods -n ${{ env.NAMESPACE }} -o wide
+          echo ""
+          echo "=== Backend Pod Events ==="
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=blog-backend -o name | head -1 | xargs -r kubectl describe -n ${{ env.NAMESPACE }} | tail -30
+          echo ""
+          echo "=== Backend Pod Logs (최근 150줄) ==="
+          kubectl logs deployment/blog-backend -n ${{ env.NAMESPACE }} --tail=150 --all-containers=true 2>/dev/null || true
+          echo ""
+          echo "=== Backend Pod Logs (재시작 직전) ==="
+          kubectl logs deployment/blog-backend -n ${{ env.NAMESPACE }} --previous --tail=100 --all-containers=true 2>/dev/null || true
+          echo ""
+          echo "=== Frontend Pod Events ==="
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=blog-frontend -o name | head -1 | xargs -r kubectl describe -n ${{ env.NAMESPACE }} | tail -30
+          echo ""
+          echo "=== Frontend Pod Logs (최근 100줄) ==="
+          kubectl logs deployment/blog-frontend -n ${{ env.NAMESPACE }} --tail=100 --all-containers=true 2>/dev/null || true
       
       - name: Show Status
         if: always()
