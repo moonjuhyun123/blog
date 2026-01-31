@@ -20,6 +20,15 @@ export interface Category {
   createdAt: string;
 }
 
+export interface CategorySummary {
+  id: number;
+  name: string;
+  slug: string;
+  createdAt: string;
+  sortOrder?: number | null;
+  postCount: number;
+}
+
 export interface PostSummary {
   id: number;
   title: string;
