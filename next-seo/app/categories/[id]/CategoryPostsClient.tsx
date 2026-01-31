@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { listCategorySummary, listPostsByCategory, me, pinPost } from "../../../lib/api";
-import type { PageResponse, PostSummary, User } from "../../../lib/types";
+import type { CategorySummary, PageResponse, PostSummary, User } from "../../../lib/types";
 
 export default function CategoryPostsClient({
   initialData,
@@ -46,7 +46,7 @@ export default function CategoryPostsClient({
     if (initialCategoryName != null) return;
     listCategorySummary()
       .then((cats) => {
-        setCategoryName(cats.find((c) => c.id === categoryId)?.name ?? null);
+        setCategoryName(cats.find((c: CategorySummary) => c.id === categoryId)?.name ?? null);
       })
       .catch(() => setCategoryName(null));
   }, [categoryId, initialCategoryName]);
